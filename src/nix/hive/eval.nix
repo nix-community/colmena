@@ -142,6 +142,7 @@ let
     };
   in evalConfig {
     inherit (npkgs.stdenv.hostPlatform) system;
+    inherit (npkgs) lib;
 
     modules = [
       nixpkgsModule
