@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4.2.2
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
+        uses: DeterminateSystems/nix-installer-action@786fff0690178f1234e4e1fe9b536e94f5433196 # v20
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Set up QEMU
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@v4.2.2
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
+        uses: DeterminateSystems/nix-installer-action@786fff0690178f1234e4e1fe9b536e94f5433196 # v20
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Enable Binary Cache
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4.2.2
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
+        uses: DeterminateSystems/nix-installer-action@786fff0690178f1234e4e1fe9b536e94f5433196 # v20
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Enable Binary Cache
