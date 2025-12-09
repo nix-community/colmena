@@ -104,4 +104,13 @@ impl Goal {
         use Goal::*;
         !matches!(self, Build)
     }
+
+    /// Returns whether this goal is supported for Darwin systems.
+    ///
+    /// Darwin doesn't support the "boot" goal since it doesn't have
+    /// separate boot profiles like NixOS.
+    pub fn supported_on_darwin(&self) -> bool {
+        use Goal::*;
+        !matches!(self, Boot)
+    }
 }

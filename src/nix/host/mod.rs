@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use super::{Goal, Key, Profile, StorePath};
+use super::{Goal, Key, Profile, StorePath, SystemType};
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
 
@@ -34,6 +34,9 @@ pub struct RebootOptions {
 
     /// New system profile to expect upon reboot.
     new_profile: Option<Profile>,
+
+    /// System type (for platform-specific boot ID detection).
+    system_type: SystemType,
 }
 
 impl Default for CopyOptions {
@@ -68,6 +71,7 @@ impl Default for RebootOptions {
         Self {
             wait_for_boot: true,
             new_profile: None,
+            system_type: SystemType::default(),
         }
     }
 }
@@ -82,9 +86,18 @@ impl RebootOptions {
         self.new_profile = profile;
         self
     }
+
+    pub fn system_type(mut self, val: SystemType) -> Self {
+        self.system_type = val;
+        self
+    }
+
+    pub fn get_system_type(&self) -> SystemType {
+        self.system_type
+    }
 }
 
-/// A Nix(OS) host.
+/// A Nix(OS)/nix-darwin host.
 ///
 /// The underlying implementation must be Send and Sync.
 #[async_trait]
@@ -128,6 +141,7 @@ pub trait Host: Send + Sync + std::fmt::Debug {
         profile: &Profile,
         goal: Goal,
         copy_options: CopyOptions,
+        system_type: SystemType,
     ) -> ColmenaResult<()> {
         self.copy_closure(
             profile.as_store_path(),
@@ -137,7 +151,7 @@ pub trait Host: Send + Sync + std::fmt::Debug {
         .await?;
 
         if goal.requires_activation() {
-            self.activate(profile, goal).await?;
+            self.activate(profile, goal, system_type).await?;
         }
 
         Ok(())
@@ -167,11 +181,11 @@ pub trait Host: Send + Sync + std::fmt::Debug {
     /// to `/run/current-system` if it doesn't exist.
     async fn get_main_system_profile(&mut self) -> ColmenaResult<Profile>;
 
-    /// Activates a system profile on the host, if it runs NixOS.
+    /// Activates a system profile on the host (NixOS or darwin).
     ///
     /// The profile must already exist on the host. You should probably use deploy instead.
     #[allow(unused_variables)]
-    async fn activate(&mut self, profile: &Profile, goal: Goal) -> ColmenaResult<()> {
+    async fn activate(&mut self, profile: &Profile, goal: Goal, system_type: SystemType) -> ColmenaResult<()> {
         Err(ColmenaError::Unsupported)
     }
 
