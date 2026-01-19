@@ -132,8 +132,9 @@ impl CommandExt for Command {
             .await?;
 
         if output.status.success() {
-            // FIXME: unwrap
-            Ok(String::from_utf8(output.stdout).unwrap())
+            String::from_utf8(output.stdout).map_err(|err| ColmenaError::BadOutput {
+                output: String::from_utf8_lossy(err.as_bytes()).to_string(),
+            })
         } else {
             Err(output.status.into())
         }
