@@ -185,7 +185,12 @@ pub trait Host: Send + Sync + std::fmt::Debug {
     ///
     /// The profile must already exist on the host. You should probably use deploy instead.
     #[allow(unused_variables)]
-    async fn activate(&mut self, profile: &Profile, goal: Goal, system_type: SystemType) -> ColmenaResult<()> {
+    async fn activate(
+        &mut self,
+        profile: &Profile,
+        goal: Goal,
+        system_type: SystemType,
+    ) -> ColmenaResult<()> {
         Err(ColmenaError::Unsupported)
     }
 

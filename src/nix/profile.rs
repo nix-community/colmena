@@ -4,7 +4,9 @@ use std::process::Stdio;
 
 use tokio::process::Command;
 
-use super::{BuildResult, ColmenaError, ColmenaResult, Goal, StoreDerivation, StorePath, SystemType};
+use super::{
+    BuildResult, ColmenaError, ColmenaResult, Goal, StoreDerivation, StorePath, SystemType,
+};
 
 pub type ProfileDerivation = StoreDerivation<Profile>;
 
@@ -14,7 +16,10 @@ pub struct Profile(StorePath);
 
 impl Profile {
     /// Creates a profile from a store path, validating it against the expected system type.
-    pub fn from_store_path_with_type(path: StorePath, system_type: SystemType) -> ColmenaResult<Self> {
+    pub fn from_store_path_with_type(
+        path: StorePath,
+        system_type: SystemType,
+    ) -> ColmenaResult<Self> {
         if !path.is_dir() {
             return Err(ColmenaError::InvalidProfile);
         }

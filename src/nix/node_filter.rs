@@ -9,6 +9,9 @@ use clap::Args;
 use glob::Pattern as GlobPattern;
 
 use super::{ColmenaError, ColmenaResult, NodeConfig, NodeName};
+// Only referenced by the test NodeConfig template below.
+#[cfg(test)]
+use super::SystemType;
 
 #[derive(Debug, Default, Args)]
 pub struct NodeFilterOpts {
@@ -247,6 +250,7 @@ mod tests {
             privilege_escalation_command: vec![],
             extra_ssh_options: vec![],
             keys: HashMap::new(),
+            system_type: SystemType::default(),
         };
 
         let mut nodes = HashMap::new();

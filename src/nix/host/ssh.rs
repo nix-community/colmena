@@ -100,7 +100,12 @@ impl Host for Ssh {
         Ok(())
     }
 
-    async fn activate(&mut self, profile: &Profile, goal: Goal, system_type: SystemType) -> ColmenaResult<()> {
+    async fn activate(
+        &mut self,
+        profile: &Profile,
+        goal: Goal,
+        system_type: SystemType,
+    ) -> ColmenaResult<()> {
         if !goal.requires_activation() {
             return Err(ColmenaError::Unsupported);
         }
@@ -123,7 +128,8 @@ impl Host for Ssh {
         }
 
         // Get the activation command based on system type
-        let activation_command = profile.activation_command(goal, system_type)
+        let activation_command = profile
+            .activation_command(goal, system_type)
             .ok_or(ColmenaError::Unsupported)?;
         let v: Vec<&str> = activation_command.iter().map(|s| &**s).collect();
         let command = self.ssh(&v);
