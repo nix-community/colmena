@@ -169,7 +169,9 @@ impl CommandExt for CommandExecution {
         self.run().await?;
         let (stdout, _) = self.get_logs();
 
-        Ok(stdout.unwrap().to_owned())
+        stdout.cloned().ok_or_else(|| ColmenaError::BadOutput {
+            output: "missing stdout from command".into(),
+        })
     }
 
     /// Captures deserialized output from JSON.
