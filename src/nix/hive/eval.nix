@@ -184,7 +184,7 @@ in rec {
   __schema = "v0.5";
 
   nodes = listToAttrs (map (name: { inherit name; value = evalNode name (configsFor name); }) nodeNames);
-  toplevel =         lib.mapAttrs (_: v: v.config.system.build.toplevel) nodes;
+  toplevel = lib.mapAttrs (name: node: let targetImage = deploymentConfig.${name}.targetImage; in if targetImage == null then node.config.system.build.toplevel else node.config.system.build.images.${targetImage}.passthru.config.system.build.toplevel) nodes;
   deploymentConfig = lib.mapAttrs (_: v: v.config.deployment)            nodes;
   deploymentConfigSelected = names: lib.filterAttrs (name: _: elem name names) deploymentConfig;
   evalSelected =             names: lib.filterAttrs (name: _: elem name names) toplevel;

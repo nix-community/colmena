@@ -124,6 +124,13 @@ with builtins; rec {
           type = types.nullOr types.str;
           default = "root";
         };
+        targetImage = lib.mkOption {
+          description = ''
+            The image (from system.build.images.<targetImage>) to deploy on the target.
+          '';
+          type = types.nullOr types.str;
+          default = null;
+        };
         allowLocalDeployment = lib.mkOption {
           description = ''
             Allow the configuration to be applied locally on the host running
