@@ -2,6 +2,7 @@
 
 use super::*;
 
+use crate::nix::SystemType;
 use std::collections::HashSet;
 use std::fs;
 use std::hash::Hash;
@@ -672,4 +673,53 @@ fn test_hive_get_meta() {
     eprintln!("{:?}", eval);
 
     assert!(!eval.allow_apply_all);
+}
+
+#[test]
+fn test_system_type_darwin() {
+    // deployment.systemType = "darwin" should be accepted
+    TempHive::valid(
+        r#"
+      {
+        test = { ... }: {
+          boot.isContainer = true;
+          deployment.systemType = "darwin";
+        };
+      }
+    "#,
+    );
+}
+
+#[test]
+fn test_system_type_nixos_default() {
+    // systemType defaults to "nixos"
+    let hive = TempHive::new(
+        r#"
+      {
+        test = { ... }: {
+          boot.isContainer = true;
+        };
+      }
+    "#,
+    );
+    let nodes = block_on(hive.deployment_info()).unwrap();
+    let test = &nodes[&node!("test")];
+    assert_eq!(SystemType::NixOS, test.system_type());
+}
+
+#[test]
+fn test_system_type_darwin_parsed() {
+    let hive = TempHive::new(
+        r#"
+      {
+        test = { ... }: {
+          boot.isContainer = true;
+          deployment.systemType = "darwin";
+        };
+      }
+    "#,
+    );
+    let nodes = block_on(hive.deployment_info()).unwrap();
+    let test = &nodes[&node!("test")];
+    assert_eq!(SystemType::Darwin, test.system_type());
 }
