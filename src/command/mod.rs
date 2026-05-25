@@ -4,7 +4,6 @@ pub mod exec;
 pub mod nix_info;
 pub mod repl;
 
-#[cfg(target_os = "linux")]
 pub mod apply_local;
 
 #[cfg(debug_assertions)]

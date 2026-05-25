@@ -66,16 +66,21 @@ pub async fn run(
         quit::with_code(1);
     }
 
-    // Sanity check: Are we running NixOS?
-    if let Ok(os_release) = fs::read_to_string("/etc/os-release").await {
-        let re = Regex::new(r#"ID="?nixos"?"#).unwrap();
-        if !re.is_match(&os_release) {
-            tracing::error!("\"apply-local\" only works on NixOS machines.");
+    // Sanity check: Are we running NixOS or macOS (nix-darwin)?
+    let is_darwin = cfg!(target_os = "macos");
+    if !is_darwin {
+        if let Ok(os_release) = fs::read_to_string("/etc/os-release").await {
+            let re = Regex::new(r#"ID="?nixos"?"#).unwrap();
+            if !re.is_match(&os_release) {
+                tracing::error!(
+                    "\"apply-local\" only works on NixOS or macOS (nix-darwin) machines."
+                );
+                quit::with_code(5);
+            }
+        } else {
+            tracing::error!("Could not detect the OS version from /etc/os-release.");
             quit::with_code(5);
         }
-    } else {
-        tracing::error!("Could not detect the OS version from /etc/os-release.");
-        quit::with_code(5);
     }
 
     let verbose = verbose || sudo; // cannot use spinners with interactive sudo
