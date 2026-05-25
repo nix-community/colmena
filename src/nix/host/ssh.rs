@@ -69,8 +69,14 @@ impl Host for Ssh {
     }
 
     async fn realize_remote(&mut self, derivation: &StorePath) -> ColmenaResult<Vec<StorePath>> {
+        // Use full path for nix-store on Darwin since root's PATH doesn't include nix binaries
+        let nix_store = if self.system_type.is_darwin() {
+            format!("{}/nix-store", DARWIN_NIX_BIN_PATH)
+        } else {
+            "nix-store".to_string()
+        };
         let command = self.ssh(&[
-            "nix-store",
+            &nix_store,
             "--no-gc-warning",
             "--realise",
             derivation.as_path().to_str().unwrap(),
