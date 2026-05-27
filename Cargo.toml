@@ -25,7 +25,7 @@ regex = "1"
 serde = { version = "1.0.163", features = ["derive"] }
 serde_json = "1.0"
 shell-escape = "0.1.5"
-snafu = { version = "0.8.0", features = ["backtrace", "backtraces-impl-backtrace-crate"] }
+snafu = { version = "0.9.1", features = ["backtrace", "backtraces-impl-backtrace-crate"] }
 sys-info = "0.9.1"
 tempfile = "3.5.0"
 tokio-stream = "0.1.14"

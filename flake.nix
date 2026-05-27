@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    stable.url = "github:NixOS/nixpkgs/nixos-25.05";
+    stable.url = "github:NixOS/nixpkgs/release-26.05";
 
     nix-github-actions = {
       url = "github:nix-community/nix-github-actions";
@@ -154,7 +154,7 @@
           packages = with pkgs; [
             bashInteractive
             editorconfig-checker
-            nixfmt-rfc-style
+            nixfmt
             clippy
             rust-analyzer
             cargo-outdated

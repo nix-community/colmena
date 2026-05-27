@@ -3,7 +3,7 @@
   stdenv,
   nix-gitignore,
   mdbook,
-  mdbook-linkcheck,
+  mdbook-linkcheck2,
   python3,
   callPackage,
   writeScript,
@@ -58,7 +58,7 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     mdbook
-    mdbook-linkcheck
+    mdbook-linkcheck2
     python3
   ];
 
