@@ -22,6 +22,22 @@ You can also specify an expression directly on the command line:
 $ colmena eval -E '{ nodes, pkgs, lib, ... }: ...'
 ```
 
+## Evaluating Selected Hosts
+
+To evaluate the system profile derivations for selected hosts, pass the same `--on` selector used
+by `apply` and `build`:
+
+```console
+$ colmena eval --on @web
+{
+  "alpha": "/nix/store/00000000000000000000000000000000-nixos-system-alpha.drv",
+  "beta": "/nix/store/11111111111111111111111111111111-nixos-system-beta.drv"
+}
+```
+
+This is useful for quickly checking whether selected hosts still evaluate without building them.
+Use `--eval-node-limit` to control how many hosts are evaluated in each Nix invocation.
+
 ## Instantiation
 
 You may directly instantiate an expression that evaluates to a derivation:
