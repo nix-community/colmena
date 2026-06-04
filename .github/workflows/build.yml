@@ -93,7 +93,7 @@ jobs:
         with:
           remove-dotnet: 'true'
           build-mount-path: /nix
-          root-reserve-mb: 4096
+          root-reserve-mb: 12288
 
       - name: Set /nix permissions
         run: |
