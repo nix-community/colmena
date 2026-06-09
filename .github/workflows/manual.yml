@@ -16,7 +16,7 @@ jobs:
     if: github.repository == 'zhaofengli/colmena'
 
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.3.1
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
@@ -33,7 +33,7 @@ jobs:
         run: nix build .#manual -L
 
       - name: Deploy manual
-        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
           branch: gh-pages
           folder: result
@@ -48,7 +48,7 @@ jobs:
         run: nix build .#manual.redirectFarm -L
 
       - name: Deploy redirect farm
-        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
           branch: gh-pages
           folder: result-redirectFarm

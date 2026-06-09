@@ -22,14 +22,14 @@ jobs:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.image }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.3.1
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
         if: matrix.system == 'aarch64-linux'
 
       - name: Generate System Flags
@@ -60,7 +60,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.3.1
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
@@ -98,7 +98,7 @@ jobs:
         run: |
           sudo chown root:root /nix
 
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.3.1
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
