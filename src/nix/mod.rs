@@ -169,6 +169,7 @@ impl NodeConfig {
         self.allow_local_deployment
     }
 
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     pub fn privilege_escalation_command(&self) -> &Vec<String> {
         &self.privilege_escalation_command
     }

@@ -107,9 +107,8 @@ pub async fn run(
         let mut failed: usize = 0;
 
         for x in results {
-            match x {
-                Err(_) => failed += 1,
-                Ok(_) => (),
+            if x.is_err() {
+                failed += 1
             }
         }
 

@@ -10,7 +10,7 @@ use snafu::ErrorCompat;
 use crate::{error::ColmenaError, nix::HivePath};
 
 /// Runs a closure and tries to troubleshoot if it returns an error.
-pub async fn run_wrapped<'a, F, T>(f: F, hive_config: Option<HivePath>) -> T
+pub async fn run_wrapped<F, T>(f: F, hive_config: Option<HivePath>) -> T
 where
     F: Future<Output = Result<T, ColmenaError>>,
 {

@@ -39,6 +39,7 @@ pub trait CommandExt {
         T: DeserializeOwned;
 
     /// Runs the command, capturing a single store path.
+    #[allow(dead_code)]
     async fn capture_store_path(&mut self) -> ColmenaResult<StorePath>;
 }
 

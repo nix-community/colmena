@@ -146,6 +146,7 @@ impl Host for Local {
 }
 
 impl Local {
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     pub fn set_privilege_escalation_command(&mut self, command: Option<Vec<String>>) {
         self.privilege_escalation_command = command;
     }

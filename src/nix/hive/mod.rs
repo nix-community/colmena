@@ -486,7 +486,7 @@ impl Hive {
         matches!(self.path(), HivePath::Flake(_))
     }
 
-    fn nix_instantiate(&self, expression: &str) -> NixInstantiate {
+    fn nix_instantiate(&self, expression: &str) -> NixInstantiate<'_> {
         NixInstantiate::new(self, expression.to_owned())
     }
 
@@ -587,7 +587,7 @@ impl<'hive> NixInstantiate<'hive> {
     }
 }
 
-impl<'hive> NixExpression for EvalSelectedExpression<'hive> {
+impl NixExpression for EvalSelectedExpression<'_> {
     fn expression(&self) -> String {
         format!(
             "{} hive.evalSelected {}",

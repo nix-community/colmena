@@ -332,7 +332,7 @@ impl Ssh {
                 command.arg("--gzip");
             }
 
-            command.arg(&self.ssh_target()).arg(path.as_path());
+            command.arg(self.ssh_target()).arg(path.as_path());
 
             command
         };
