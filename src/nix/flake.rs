@@ -89,6 +89,7 @@ impl FlakeMetadata {
         let child = Command::new("nix")
             .args(["flake", "metadata", "--json"])
             .args(["--extra-experimental-features", "nix-command flakes"])
+            .args(["--no-write-lock-file"])
             .arg(flake)
             .stdout(Stdio::piped())
             .spawn()?;
