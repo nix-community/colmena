@@ -51,7 +51,7 @@ def process(book, version, unstable):
 
     eprint(f"Version is {version_debug}")
 
-    for section in book['sections']:
+    for section in book['items']:
         process_item(section)
 
 

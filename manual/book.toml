@@ -1,7 +1,6 @@
 [book]
 authors = ["Zhaofeng Li"]
 language = "en"
-multilingual = false
 src = "src"
 title = "Colmena (Unstable)"
 
@@ -10,7 +9,7 @@ site-url = "/unstable/"
 git-repository-url = "https://github.com/zhaofengli/colmena"
 edit-url-template = "https://github.com/zhaofengli/colmena/edit/main/manual/{path}"
 
-[output.linkcheck]
+[output.linkcheck2]
 follow-web-links = false
 
 [preprocessor.colmena]

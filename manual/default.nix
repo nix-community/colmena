@@ -4,9 +4,9 @@
   nix-gitignore,
   mdbook,
   mdbook-linkcheck2,
+  cacert,
   python3,
   callPackage,
-  writeScript,
   deploymentOptionsMd ? null,
   metaOptionsMd ? null,
   colmena ? null,
@@ -59,6 +59,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     mdbook
     mdbook-linkcheck2
+    cacert
     python3
   ];
 
