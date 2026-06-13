@@ -200,6 +200,27 @@ fn test_parse_makehive_flake() {
         &nodes.keys().map(NodeName::as_str).collect::<Vec<&str>>(),
     ));
 
+    // nix-eval-jobs --flake <installable> --select <fn>
+    {
+        let selected = hive.eval_selected_expr(&[node!("host-a")]).unwrap();
+        assert!(selected.installable().unwrap().ends_with("#colmenaHive"));
+
+        let expr = selected.expression();
+        assert!(expr.starts_with("with builtins; hive:"));
+        assert!(expr.contains("host-a"));
+    }
+
+    // nix-eval-jobs --expr <expr>
+    {
+        hive.set_evaluation_method(EvaluationMethod::NixInstantiate);
+        assert!(
+            hive.eval_selected_expr(&[node!("host-a")])
+                .unwrap()
+                .installable()
+                .is_none()
+        );
+    }
+
     drop(flake_dir);
 }
 

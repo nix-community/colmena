@@ -4,8 +4,15 @@ use serde::Serialize;
 
 /// A Nix expression.
 pub trait NixExpression: Send + Sync {
-    /// Returns the full Nix expression to be evaluated.
+    /// When [`Self::installable`] returns `None`,
+    /// returns the full Nix expression to be evaluated (`nix-eval-jobs --expr`),
+    /// o.w. return function applied to flake eval root (`nix-eval-jobs --select`).
     fn expression(&self) -> String;
+
+    /// Returns the full flake `colmenaHive` accessor or `None`.
+    fn installable(&self) -> Option<String> {
+        None
+    }
 
     /// Returns whether this expression requires the use of flakes.
     fn requires_flakes(&self) -> bool {

@@ -77,10 +77,18 @@ impl DrvSetEvaluator for NixEvalJobs {
         flags: NixFlags,
     ) -> ColmenaResult<Pin<Box<dyn Stream<Item = EvalResult>>>> {
         let mut command = Command::new(&self.executable);
-        command
-            .arg("--workers")
-            .arg(self.workers.to_string())
-            .args(["--expr", &expression.expression()]);
+        command.arg("--workers").arg(self.workers.to_string());
+
+        if let Some(installable) = expression.installable() {
+            command.args([
+                "--flake",
+                &installable,
+                "--select",
+                &expression.expression(),
+            ]);
+        } else {
+            command.args(["--expr", &expression.expression()]);
+        }
 
         command.args(flags.to_args());
 
