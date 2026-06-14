@@ -10,8 +10,8 @@ use tokio::process::Command;
 
 use super::error::{ColmenaError, ColmenaResult};
 use super::job::JobHandle;
-use super::nix::deployment::TargetNodeMap;
 use super::nix::StorePath;
+use super::nix::deployment::TargetNodeMap;
 
 const NEWLINE: u8 = 0xa;
 

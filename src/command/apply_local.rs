@@ -6,9 +6,9 @@ use tokio::fs;
 
 use crate::error::ColmenaError;
 
-use crate::nix::deployment::{Deployment, Goal, Options, TargetNode};
 use crate::nix::Hive;
-use crate::nix::{host::Local as LocalHost, NodeName};
+use crate::nix::deployment::{Deployment, Goal, Options, TargetNode};
+use crate::nix::{NodeName, host::Local as LocalHost};
 use crate::progress::SimpleProgressOutput;
 
 /// Apply configurations on the local machine
@@ -60,7 +60,9 @@ pub async fn run(
     }: Opts,
 ) -> Result<(), ColmenaError> {
     if sudo_command.is_some() {
-        tracing::error!("--sudo-command has been removed. Please configure it in deployment.privilegeEscalationCommand in the node configuration.");
+        tracing::error!(
+            "--sudo-command has been removed. Please configure it in deployment.privilegeEscalationCommand in the node configuration."
+        );
         quit::with_code(1);
     }
 

@@ -4,8 +4,8 @@ use tempfile::Builder as TempFileBuilder;
 use tokio::process::Command;
 
 use crate::error::ColmenaResult;
-use crate::nix::info::NixCheck;
 use crate::nix::Hive;
+use crate::nix::info::NixCheck;
 
 pub async fn run(hive: Hive) -> ColmenaResult<()> {
     let nix_check = NixCheck::detect().await;

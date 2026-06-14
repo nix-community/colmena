@@ -128,7 +128,9 @@ impl NixCheck {
             tracing::info!("The Nix version you are using supports Flakes and it's enabled.");
         } else if self.flakes_supported {
             tracing::warn!("The Nix version you are using supports Flakes but it's disabled.");
-            tracing::warn!("Colmena will automatically enable Flakes for its operations, but you should enable it in your Nix configuration:");
+            tracing::warn!(
+                "Colmena will automatically enable Flakes for its operations, but you should enable it in your Nix configuration:"
+            );
             tracing::warn!("    experimental-features = nix-command flakes");
         } else {
             let emit_log = |s: &str| {
@@ -140,7 +142,9 @@ impl NixCheck {
             };
 
             emit_log("The Nix version you are using does not support Flakes.");
-            emit_log("If you are using a Nixpkgs version before 21.11, please install nixUnstable for a version that includes Flakes support.");
+            emit_log(
+                "If you are using a Nixpkgs version before 21.11, please install nixUnstable for a version that includes Flakes support.",
+            );
             if required {
                 emit_log("Cannot continue since Flakes support is required for this operation.");
             }

@@ -1,6 +1,6 @@
 use crate::error::ColmenaResult;
-use crate::nix::evaluator::nix_eval_jobs::get_pinned_nix_eval_jobs;
 use crate::nix::NixCheck;
+use crate::nix::evaluator::nix_eval_jobs::get_pinned_nix_eval_jobs;
 
 pub async fn run() -> ColmenaResult<()> {
     let check = NixCheck::detect().await;

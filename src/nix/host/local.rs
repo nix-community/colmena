@@ -5,10 +5,10 @@ use std::process::Stdio;
 use async_trait::async_trait;
 use tokio::process::Command;
 
-use super::{key_uploader, CopyDirection, CopyOptions, Host};
+use super::{CopyDirection, CopyOptions, Host, key_uploader};
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
-use crate::nix::{Goal, Key, NixFlags, Profile, StorePath, CURRENT_PROFILE, SYSTEM_PROFILE};
+use crate::nix::{CURRENT_PROFILE, Goal, Key, NixFlags, Profile, SYSTEM_PROFILE, StorePath};
 use crate::util::{CommandExecution, CommandExt};
 
 /// The local machine running Colmena.

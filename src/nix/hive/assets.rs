@@ -82,7 +82,10 @@ impl Assets {
             HivePath::Flake(_) => {
                 format!(
                     "with builtins; let assets = getFlake \"{assets_flake_uri}\"; hive = assets.processFlake; in ",
-                    assets_flake_uri = self.assets_flake_uri.as_ref().expect("The assets flake must have been initialized"),
+                    assets_flake_uri = self
+                        .assets_flake_uri
+                        .as_ref()
+                        .expect("The assets flake must have been initialized"),
                 )
             }
         }

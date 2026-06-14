@@ -11,7 +11,7 @@ use tracing_subscriber::EnvFilter;
 use crate::{
     command::{self, apply::DeployOpts},
     error::{ColmenaError, ColmenaResult},
-    nix::{hive::EvaluationMethod, Hive, HivePath},
+    nix::{Hive, HivePath, hive::EvaluationMethod},
 };
 
 /// Base URL of the manual, without the trailing slash.

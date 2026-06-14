@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use super::{
-    create_channel, Line, LineStyle, Message, ProgressOutput, Receiver, Sender, DEFAULT_LABEL_WIDTH,
+    DEFAULT_LABEL_WIDTH, Line, LineStyle, Message, ProgressOutput, Receiver, Sender, create_channel,
 };
 use crate::error::ColmenaResult;
 use crate::job::JobId;

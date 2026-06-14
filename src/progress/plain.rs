@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use console::Style as ConsoleStyle;
 
 use super::{
-    create_channel, Line, LineStyle, Message, ProgressOutput, Receiver, Sender, DEFAULT_LABEL_WIDTH,
+    DEFAULT_LABEL_WIDTH, Line, LineStyle, Message, ProgressOutput, Receiver, Sender, create_channel,
 };
 use crate::error::ColmenaResult;
 

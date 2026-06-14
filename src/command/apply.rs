@@ -1,13 +1,13 @@
 use std::env;
 use std::path::PathBuf;
 
-use clap::{builder::ArgPredicate, Args};
+use clap::{Args, builder::ArgPredicate};
 
 use crate::error::ColmenaError;
 use crate::nix::{
+    Hive,
     deployment::{Deployment, EvaluationNodeLimit, EvaluatorType, Goal, Options, ParallelismLimit},
     node_filter::NodeFilterOpts,
-    Hive,
 };
 use crate::progress::SimpleProgressOutput;
 
@@ -210,13 +210,7 @@ pub async fn run(hive: Hive, opts: Opts) -> Result<(), ColmenaError> {
 
     let parallelism_limit = {
         let mut limit = ParallelismLimit::default();
-        limit.set_apply_limit({
-            if parallel == 0 {
-                n_targets
-            } else {
-                parallel
-            }
-        });
+        limit.set_apply_limit(if parallel == 0 { n_targets } else { parallel });
         limit
     };
 

@@ -57,7 +57,9 @@ fn troubleshoot(hive_config: Option<HivePath>, error: &ColmenaError) -> Result<(
             eprintln!("Backtrace:");
             eprint!("{:?}", bt);
         } else {
-            eprintln!("Hint: Backtrace available - Use `RUST_BACKTRACE=1` environment variable to display a backtrace");
+            eprintln!(
+                "Hint: Backtrace available - Use `RUST_BACKTRACE=1` environment variable to display a backtrace"
+            );
         }
     }
 
