@@ -88,21 +88,18 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.nix-matrix.outputs.matrix) }}
     steps:
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          remove-dotnet: 'true'
-          build-mount-path: /nix
-
-      - name: Set /nix permissions
-        run: |
-          sudo chown root:root /nix
-
       - uses: actions/checkout@v4.2.2
 
+      - name: Reclaim
+        uses: wimpysworld/nothing-but-nix@main
+
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
-        continue-on-error: true # Self-hosted runners already have Nix installed
+        uses: NixOS/nix-installer-action@main
+        with:
+          extra-conf: |
+            accept-flake-config = true
+            build-dir = /nix/build
+            experimental-features = nix-command flakes
 
       - name: Enable Binary Cache
         uses: cachix/cachix-action@0fc020193b5a1fa3ac4575aa3a7d3aa6a35435ad # v16
