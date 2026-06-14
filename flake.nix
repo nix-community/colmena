@@ -37,45 +37,11 @@
       ];
       colmenaOptions = import ./src/nix/hive/options.nix;
       colmenaModules = import ./src/nix/hive/modules.nix;
-
-      # Temporary fork of nix-eval-jobs with changes to be upstreamed
-      # Mostly for the integration test setup and not needed in most use cases
-      _evalJobsOverlay =
-        final: prev:
-        let
-          patched = prev.nix-eval-jobs.overrideAttrs (old: {
-            version = old.version + "-colmena";
-            patches = (old.patches or [ ]) ++ [
-              (
-                if builtins.compareVersions old.version "2.25.0" >= 0 then
-                  ./nix-eval-jobs-unstable.patch
-                else
-                  ./nix-eval-jobs-stable.patch
-              )
-            ];
-            # To silence the warning, since we intend to change the version without overriding the src.
-            __intentionallyOverridingVersion = true;
-          });
-        in
-        {
-          nix-eval-jobs = patched;
-        };
     in
     flake-utils.lib.eachSystem supportedSystems (
       system:
       let
-        nix-eval-jobs = nixpkgs.legacyPackages.${system}.nix-eval-jobs;
-
-        pkgs =
-          if builtins.compareVersions nix-eval-jobs.version "2.30.0" >= 0 then
-            nixpkgs.legacyPackages.${system}
-          else
-            import nixpkgs {
-              inherit system;
-              overlays = [
-                _evalJobsOverlay
-              ];
-            };
+        pkgs = nixpkgs.legacyPackages.${system};
       in
       rec {
         # We still maintain the expression in a Nixpkgs-acceptable form
@@ -179,8 +145,6 @@
                 overlays = [
                   self.overlays.default
                   inputsOverlay
-
-                  _evalJobsOverlay
                 ];
               };
               pkgsStable = import stable {
@@ -188,8 +152,6 @@
                 overlays = [
                   self.overlays.default
                   inputsOverlay
-
-                  _evalJobsOverlay
                 ];
               };
             }
