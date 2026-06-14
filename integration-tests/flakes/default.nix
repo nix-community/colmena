@@ -47,7 +47,7 @@ tools.runTest {
             # don't put probe.nix in source control - should fail
             deployer.succeed("cd /tmp/bundle && git init && git add flake.nix flake.lock hive.nix tools.nix")
             logs = deployer.fail("cd /tmp/bundle && run-copy-stderr ${tools.colmenaExec} apply --on @target ${applyFlags}")
-            assert re.search(r"probe.nix.*(No such file or directory|does not exist)", logs), "Expected error message not found in log"
+            assert re.search(r"probe.nix.*(No such file or directory|does not exist|not tracked by Git)", logs), "Expected error message not found in log"
 
             # now it should succeed
             deployer.succeed("cd /tmp/bundle && git add probe.nix")
