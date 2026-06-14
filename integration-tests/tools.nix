@@ -250,6 +250,7 @@ let
     {
       imports = [
         (pkgs.path + "/nixos/lib/testing/nixos-test-base.nix")
+        (pkgs.path + "/nixos/modules/virtualisation/qemu-vm.nix")
         (if elem node deployers then deployerConfig else targetConfig)
         standaloneTest.config.nodes.${node}.system.build.networkConfig
       ];
