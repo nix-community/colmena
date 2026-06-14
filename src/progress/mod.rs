@@ -103,8 +103,8 @@ impl SimpleProgressOutput {
 
     pub fn get_sender(&mut self) -> Option<Sender> {
         match self {
-            Self::Plain(ref mut o) => o.get_sender(),
-            Self::Spinner(ref mut o) => o.get_sender(),
+            Self::Plain(o) => o.get_sender(),
+            Self::Spinner(o) => o.get_sender(),
         }
     }
 

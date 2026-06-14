@@ -143,12 +143,12 @@ impl HivePath {
     pub async fn from_path<P: AsRef<Path>>(path: P) -> ColmenaResult<Self> {
         let path = path.as_ref();
 
-        if let Some(osstr) = path.file_name() {
-            if osstr == "flake.nix" {
-                let parent = path.parent().unwrap();
-                let flake = Flake::from_dir(parent).await?;
-                return Ok(Self::Flake(flake));
-            }
+        if let Some(osstr) = path.file_name()
+            && osstr == "flake.nix"
+        {
+            let parent = path.parent().unwrap();
+            let flake = Flake::from_dir(parent).await?;
+            return Ok(Self::Flake(flake));
         }
 
         Ok(Self::Legacy(path.canonicalize()?))
@@ -440,7 +440,10 @@ impl Hive {
     }
 
     /// Returns the expression to evaluate selected nodes.
-    pub fn eval_selected_expr(&self, nodes: &[NodeName]) -> ColmenaResult<impl NixExpression + '_> {
+    pub fn eval_selected_expr(
+        &self,
+        nodes: &[NodeName],
+    ) -> ColmenaResult<impl NixExpression + '_ + use<'_>> {
         let nodes_expr = SerializedNixExpression::new(nodes);
 
         Ok(EvalSelectedExpression {
