@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ffi::OsStr;
+use std::net::Ipv6Addr;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
@@ -266,6 +267,14 @@ impl Ssh {
     ) -> Command {
         let ssh_options = self.ssh_options();
         let ssh_options_str = ssh_options.join(" ");
+        let ssh_target = if self.host.parse::<Ipv6Addr>().is_ok() {
+            match &self.user {
+                Some(n) => format!("{}@[{}]", n, self.host),
+                None => format!("[{}]", self.host),
+            }
+        } else {
+            self.ssh_target()
+        };
 
         let mut command = if self.use_nix3_copy {
             // experimental `nix copy` command with ssh-ng://
@@ -299,7 +308,7 @@ impl Ssh {
                 }
             }
 
-            let mut store_uri = format!("ssh-ng://{}", self.ssh_target());
+            let mut store_uri = format!("ssh-ng://{}", ssh_target);
             if options.gzip {
                 store_uri += "?compress=true";
             }
@@ -332,7 +341,7 @@ impl Ssh {
                 command.arg("--gzip");
             }
 
-            command.arg(&self.ssh_target()).arg(path.as_path());
+            command.arg(&ssh_target).arg(path.as_path());
 
             command
         };
