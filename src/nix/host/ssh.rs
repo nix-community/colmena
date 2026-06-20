@@ -234,7 +234,7 @@ impl Ssh {
 
         let mut cmd = Command::new("ssh");
 
-        cmd.arg(self.ssh_target())
+        cmd.arg(self.host.clone())
             .args(&options)
             .arg("--")
             .args(privilege_escalation_command)
@@ -249,13 +249,6 @@ impl Ssh {
         execution.set_job(self.job.clone());
 
         execution.run().await
-    }
-
-    fn ssh_target(&self) -> String {
-        match &self.user {
-            Some(n) => format!("{}@{}", n, self.host),
-            None => self.host.clone(),
-        }
     }
 
     fn nix_copy_closure(
@@ -299,7 +292,7 @@ impl Ssh {
                 }
             }
 
-            let mut store_uri = format!("ssh-ng://{}", self.ssh_target());
+            let mut store_uri = format!("ssh-ng://{}", self.host.clone());
             if options.gzip {
                 store_uri += "?compress=true";
             }
@@ -332,7 +325,7 @@ impl Ssh {
                 command.arg("--gzip");
             }
 
-            command.arg(&self.ssh_target()).arg(path.as_path());
+            command.arg(&self.host.clone()).arg(path.as_path());
 
             command
         };
@@ -357,6 +350,11 @@ impl Ssh {
         .chain(self.extra_ssh_options.clone())
         .collect();
 
+        if let Some(user) = self.user.as_ref() {
+            options.push("-l".to_string());
+            options.push(user.to_string());
+        }
+
         if let Some(port) = self.port {
             options.push("-p".to_string());
             options.push(port.to_string());
@@ -365,6 +363,10 @@ impl Ssh {
         if let Some(ssh_config) = self.ssh_config.as_ref() {
             options.push("-F".to_string());
             options.push(ssh_config.to_str().unwrap().to_string());
+        }
+
+        if let Ok(custom_ssh_opts) = std::env::var("COLMENA_SSHOPTS") {
+            options.push(custom_ssh_opts)
         }
 
         options
