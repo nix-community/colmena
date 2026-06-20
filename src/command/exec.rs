@@ -8,6 +8,7 @@ use tokio::sync::Semaphore;
 
 use crate::error::ColmenaError;
 use crate::job::{JobMonitor, JobState, JobType};
+use crate::nix::host::Host;
 use crate::nix::node_filter::NodeFilterOpts;
 use crate::nix::Hive;
 use crate::progress::SimpleProgressOutput;

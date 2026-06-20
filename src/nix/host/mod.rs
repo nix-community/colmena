@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use async_trait::async_trait;
+use enum_dispatch::enum_dispatch;
 
 use super::{Goal, Key, Profile, StorePath};
 use crate::error::{ColmenaError, ColmenaResult};
@@ -84,10 +84,17 @@ impl RebootOptions {
     }
 }
 
+#[enum_dispatch]
+#[derive(Debug)]
+pub enum AnyHost {
+    Ssh,
+    Local,
+}
+
 /// A Nix(OS) host.
 ///
 /// The underlying implementation must be Send and Sync.
-#[async_trait]
+#[enum_dispatch(AnyHost)]
 pub trait Host: Send + Sync + std::fmt::Debug {
     /// Sends or receives the specified closure to the host
     ///

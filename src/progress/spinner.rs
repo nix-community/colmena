@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use async_trait::async_trait;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use super::{
@@ -161,7 +160,6 @@ impl SpinnerOutput {
     }
 }
 
-#[async_trait]
 impl ProgressOutput for SpinnerOutput {
     async fn run_until_completion(mut self) -> ColmenaResult<Self> {
         let meta_bar = self.multi.add(self.meta_bar.clone());

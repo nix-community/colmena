@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
+use super::host::AnyHost;
 use super::Host;
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::util::CommandExt;
@@ -119,7 +120,7 @@ impl<T: TryFrom<BuildResult<T>>> StoreDerivation<T> {
 
 impl<T: TryFrom<BuildResult<T>, Error = ColmenaError>> StoreDerivation<T> {
     /// Builds the store derivation on a host, resulting in a T.
-    pub async fn realize(&self, host: &mut Box<dyn Host>) -> ColmenaResult<T> {
+    pub async fn realize(&self, host: &mut AnyHost) -> ColmenaResult<T> {
         let paths: Vec<StorePath> = host.realize(&self.path).await?;
 
         let result = BuildResult {
@@ -130,7 +131,7 @@ impl<T: TryFrom<BuildResult<T>, Error = ColmenaError>> StoreDerivation<T> {
     }
 
     /// Builds the store derivation on a host without copying the results back.
-    pub async fn realize_remote(&self, host: &mut Box<dyn Host>) -> ColmenaResult<T> {
+    pub async fn realize_remote(&self, host: &mut AnyHost) -> ColmenaResult<T> {
         let paths: Vec<StorePath> = host.realize_remote(&self.path).await?;
 
         let result = BuildResult {

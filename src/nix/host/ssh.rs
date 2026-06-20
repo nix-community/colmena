@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use tokio::process::Command;
 use tokio::time::sleep;
 
@@ -46,7 +45,6 @@ pub struct Ssh {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct BootId(String);
 
-#[async_trait]
 impl Host for Ssh {
     async fn copy_closure(
         &mut self,
@@ -216,10 +214,6 @@ impl Ssh {
 
     pub fn set_use_nix3_copy(&mut self, enable: bool) {
         self.use_nix3_copy = enable;
-    }
-
-    pub fn upcast(self) -> Box<dyn Host> {
-        Box::new(self)
     }
 
     /// Returns a Tokio Command to run an arbitrary command on the host.

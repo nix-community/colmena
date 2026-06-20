@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 
 use std::process::Stdio;
 
-use async_trait::async_trait;
 use futures::future::join3;
 use serde::de::DeserializeOwned;
 use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
@@ -25,7 +24,6 @@ pub struct CommandExecution {
 }
 
 /// Helper extensions for Commands.
-#[async_trait]
 pub trait CommandExt {
     /// Runs the command with stdout and stderr passed through to the user.
     async fn passthrough(&mut self) -> ColmenaResult<()>;
@@ -108,7 +106,6 @@ impl CommandExecution {
     }
 }
 
-#[async_trait]
 impl CommandExt for Command {
     /// Runs the command with stdout and stderr passed through to the user.
     async fn passthrough(&mut self) -> ColmenaResult<()> {
@@ -158,7 +155,6 @@ impl CommandExt for Command {
     }
 }
 
-#[async_trait]
 impl CommandExt for CommandExecution {
     async fn passthrough(&mut self) -> ColmenaResult<()> {
         self.run().await

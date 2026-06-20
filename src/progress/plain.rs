@@ -1,6 +1,5 @@
 //! Plain output.
 
-use async_trait::async_trait;
 use console::Style as ConsoleStyle;
 
 use super::{
@@ -57,7 +56,6 @@ impl PlainOutput {
     }
 }
 
-#[async_trait]
 impl ProgressOutput for PlainOutput {
     async fn run_until_completion(mut self) -> ColmenaResult<Self> {
         loop {

@@ -18,6 +18,7 @@ use futures::future::join_all;
 use itertools::Itertools;
 use tokio_stream::StreamExt;
 
+use super::host::AnyHost;
 use super::NixFlags;
 use crate::job::{JobHandle, JobMonitor, JobState, JobType};
 use crate::progress::Sender as ProgressSender;
@@ -75,18 +76,18 @@ pub struct TargetNode {
     name: NodeName,
 
     /// The host to deploy to.
-    host: Option<Box<dyn Host>>,
+    host: Option<AnyHost>,
 
     /// The config.deployment values of the node.
     config: NodeConfig,
 }
 
 impl TargetNode {
-    pub fn new(name: NodeName, host: Option<Box<dyn Host>>, config: NodeConfig) -> Self {
+    pub fn new(name: NodeName, host: Option<AnyHost>, config: NodeConfig) -> Self {
         Self { name, host, config }
     }
 
-    pub fn into_host(self) -> Option<Box<dyn Host>> {
+    pub fn into_host(self) -> Option<AnyHost> {
         self.host
     }
 }
@@ -505,7 +506,7 @@ impl Deployment {
         let profile: Profile = build_job
             .run(|job| async move {
                 // FIXME: Remote builder?
-                let mut builder = LocalHost::new(arc_self.nix_options.clone()).upcast();
+                let mut builder: AnyHost = LocalHost::new(arc_self.nix_options.clone()).into();
                 builder.set_job(Some(job.clone()));
 
                 let profile = profile_drv.realize(&mut builder).await?;

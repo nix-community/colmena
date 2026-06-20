@@ -110,7 +110,7 @@ pub async fn run(
                 host.set_privilege_escalation_command(Some(command));
             }
 
-            TargetNode::new(hostname.clone(), Some(host.upcast()), info.clone())
+            TargetNode::new(hostname.clone(), Some(host.into()), info.clone())
         } else {
             tracing::error!(
                 "Host \"{}\" is not present in the Hive configuration.",

@@ -9,7 +9,6 @@ pub mod spinner;
 
 use std::io::IsTerminal;
 
-use async_trait::async_trait;
 use tokio::sync::mpsc::{self, UnboundedReceiver as TokioReceiver, UnboundedSender as TokioSender};
 
 use crate::error::ColmenaResult;
@@ -29,7 +28,6 @@ pub enum SimpleProgressOutput {
 }
 
 /// A progress display driver.
-#[async_trait]
 pub trait ProgressOutput: Sized {
     /// Runs until a Message::Complete is received.
     async fn run_until_completion(self) -> ColmenaResult<Self>;

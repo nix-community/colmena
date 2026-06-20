@@ -304,7 +304,7 @@ impl Hive {
                     host.set_use_nix3_copy(true);
                 }
 
-                host.upcast()
+                host.into()
             });
             let ssh_host = host.is_some();
             let target = TargetNode::new(node.clone(), host, config);

@@ -10,7 +10,6 @@ use std::pin::Pin;
 use std::process::Stdio;
 
 use async_stream::stream;
-use async_trait::async_trait;
 use futures::Stream;
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -69,7 +68,6 @@ struct EvalLineGlobalError {
     error: String,
 }
 
-#[async_trait]
 impl DrvSetEvaluator for NixEvalJobs {
     async fn evaluate(
         &self,

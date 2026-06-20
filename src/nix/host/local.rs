@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::process::Stdio;
 
-use async_trait::async_trait;
 use tokio::process::Command;
 
 use super::{key_uploader, CopyDirection, CopyOptions, Host};
@@ -32,7 +31,6 @@ impl Local {
     }
 }
 
-#[async_trait]
 impl Host for Local {
     async fn copy_closure(
         &mut self,
@@ -148,10 +146,6 @@ impl Host for Local {
 impl Local {
     pub fn set_privilege_escalation_command(&mut self, command: Option<Vec<String>>) {
         self.privilege_escalation_command = command;
-    }
-
-    pub fn upcast(self) -> Box<dyn Host> {
-        Box::new(self)
     }
 
     /// "Uploads" a single key.

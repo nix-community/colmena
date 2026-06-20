@@ -14,7 +14,6 @@ use std::convert::TryFrom;
 use std::pin::Pin;
 use std::result::Result as StdResult;
 
-use async_trait::async_trait;
 use futures::Stream;
 
 use super::{BuildResult, NixExpression, NixFlags, StoreDerivation, StorePath};
@@ -55,7 +54,6 @@ pub struct AttributeError {
 /// A derivation set evaluator.
 ///
 /// Such an evaluator can evaluate an attribute set of derivations.
-#[async_trait]
 pub trait DrvSetEvaluator {
     /// Evaluates an attribute set of derivation, returning results as they come in.
     async fn evaluate(
