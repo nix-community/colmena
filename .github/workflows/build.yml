@@ -22,7 +22,7 @@ jobs:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.image }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.0
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
@@ -60,7 +60,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.0
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
@@ -88,7 +88,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.nix-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.0
 
       - name: Reclaim
         uses: wimpysworld/nothing-but-nix@main
