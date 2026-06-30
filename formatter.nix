@@ -3,7 +3,9 @@
   writeShellScriptBin,
   cargo,
   deno,
+  editorconfig-checker,
   nixfmt-tree,
+  ruff,
   taplo,
 }:
 
@@ -23,12 +25,18 @@ writeShellScriptBin "formatter" ''
   # disable this for now
   # ${lib.getExe deno} fmt **/*.md **/*.{yml,yaml} **/*.js
 
+  # also disabled for now (produce too maybe diffs)
+  # ${lib.getExe ruff} check --fix --unsafe-fixes --preview .
+
   ${lib.getExe nixfmt-tree} .
 
   ${lib.getExe taplo} format **/*.toml
 
-  ${lib.getExe cargo} clippy --all-features --fix --allow-dirty -- -D warnings
+  ${lib.getExe cargo} clippy --all-targets --all-features --fix --allow-dirty -- -D warnings
   ${lib.getExe cargo} fmt --all
+
+  # must run last
+  ${lib.getExe editorconfig-checker}
 
   popd
 ''

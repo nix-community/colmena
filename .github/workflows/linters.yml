@@ -22,11 +22,15 @@ jobs:
           name: colmena
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      - name: Check EditorConfig
-        run: nix-shell --run "editorconfig-checker"
-
-      - name: Check flake8
-        run: nix-shell --run "flake8 manual/preprocess.py"
-
-      - name: Check rustfmt
-        run: nix-shell --run "cargo fmt --check"
+      - name: Check
+        run: |
+          nix --version
+          nix fmt
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "================================================================"
+            echo "  Formatter produced changes. Run 'nix fmt' locally and commit."
+            echo "================================================================"
+            git status
+            git --no-pager diff
+            exit 1
+          fi
