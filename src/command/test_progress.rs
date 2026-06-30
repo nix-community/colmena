@@ -5,7 +5,7 @@ use tokio::time;
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::{JobMonitor, JobType};
 use crate::nix::NodeName;
-use crate::progress::{spinner::SpinnerOutput, ProgressOutput};
+use crate::progress::{ProgressOutput, spinner::SpinnerOutput};
 
 macro_rules! node {
     ($n:expr) => {

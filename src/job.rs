@@ -273,10 +273,10 @@ impl JobMonitor {
 
     /// Starts the monitor.
     pub async fn run_until_completion(mut self) -> ColmenaResult<Self> {
-        if let Some(width) = self.label_width {
-            if let Some(sender) = &self.progress {
-                sender.send(ProgressMessage::HintLabelWidth(width)).unwrap();
-            }
+        if let Some(width) = self.label_width
+            && let Some(sender) = &self.progress
+        {
+            sender.send(ProgressMessage::HintLabelWidth(width)).unwrap();
         }
 
         loop {
@@ -388,30 +388,30 @@ impl JobMonitor {
             metadata.custom_message = message;
         }
 
-        if new_state != JobState::Waiting {
-            if let Some(sender) = &self.progress {
-                let text = if new_state == JobState::Succeeded {
-                    metadata
-                        .custom_message
-                        .clone()
-                        .or_else(|| metadata.describe_state_transition())
+        if new_state != JobState::Waiting
+            && let Some(sender) = &self.progress
+        {
+            let text = if new_state == JobState::Succeeded {
+                metadata
+                    .custom_message
+                    .clone()
+                    .or_else(|| metadata.describe_state_transition())
+            } else {
+                metadata.describe_state_transition()
+            };
+
+            if let Some(text) = text {
+                let line = if noop {
+                    // Spinner should disappear
+                    metadata.get_line(text).style(LineStyle::SuccessNoop)
                 } else {
-                    metadata.describe_state_transition()
+                    metadata.get_line(text)
                 };
 
-                if let Some(text) = text {
-                    let line = if noop {
-                        // Spinner should disappear
-                        metadata.get_line(text).style(LineStyle::SuccessNoop)
-                    } else {
-                        metadata.get_line(text)
-                    };
-
-                    let message = self.get_print_message(job_id, line);
-                    sender.send(message).unwrap();
-                }
+                let message = self.get_print_message(job_id, line);
+                sender.send(message).unwrap();
             }
-        };
+        }
     }
 
     /// Updates the user-visible job statistics output.

@@ -10,7 +10,7 @@ use snafu::ErrorCompat;
 use crate::{error::ColmenaError, nix::HivePath};
 
 /// Runs a closure and tries to troubleshoot if it returns an error.
-pub async fn run_wrapped<'a, F, T>(f: F, hive_config: Option<HivePath>) -> T
+pub async fn run_wrapped<F, T>(f: F, hive_config: Option<HivePath>) -> T
 where
     F: Future<Output = Result<T, ColmenaError>>,
 {
@@ -57,7 +57,9 @@ fn troubleshoot(hive_config: Option<HivePath>, error: &ColmenaError) -> Result<(
             eprintln!("Backtrace:");
             eprint!("{:?}", bt);
         } else {
-            eprintln!("Hint: Backtrace available - Use `RUST_BACKTRACE=1` environment variable to display a backtrace");
+            eprintln!(
+                "Hint: Backtrace available - Use `RUST_BACKTRACE=1` environment variable to display a backtrace"
+            );
         }
     }
 

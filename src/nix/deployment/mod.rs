@@ -24,11 +24,11 @@ use crate::progress::Sender as ProgressSender;
 use crate::util;
 
 use super::{
+    ColmenaError, ColmenaResult, CopyDirection, CopyOptions, Hive, Host, NodeConfig, NodeName,
+    Profile, ProfileDerivation, RebootOptions,
     evaluator::{DrvSetEvaluator, EvalError, NixEvalJobs},
     host::Local as LocalHost,
     key::{Key, UploadAt as UploadKeyAt},
-    ColmenaError, ColmenaResult, CopyDirection, CopyOptions, Hive, Host, NodeConfig, NodeName,
-    Profile, ProfileDerivation, RebootOptions,
 };
 
 /// A deployment.

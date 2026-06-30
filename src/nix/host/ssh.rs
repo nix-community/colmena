@@ -9,10 +9,10 @@ use async_trait::async_trait;
 use tokio::process::Command;
 use tokio::time::sleep;
 
-use super::{key_uploader, CopyDirection, CopyOptions, Host, RebootOptions};
+use super::{CopyDirection, CopyOptions, Host, RebootOptions, key_uploader};
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
-use crate::nix::{Goal, Key, Profile, StorePath, CURRENT_PROFILE, SYSTEM_PROFILE};
+use crate::nix::{CURRENT_PROFILE, Goal, Key, Profile, SYSTEM_PROFILE, StorePath};
 use crate::util::{CommandExecution, CommandExt};
 
 /// A remote machine connected over SSH.
@@ -162,10 +162,10 @@ impl Host for Ssh {
         // Wait for node to come back up
         loop {
             // Ignore errors while waiting
-            if let Ok(new_id) = self.get_boot_id().await {
-                if new_id != old_id {
-                    break;
-                }
+            if let Ok(new_id) = self.get_boot_id().await
+                && new_id != old_id
+            {
+                break;
             }
 
             sleep(Duration::from_secs(2)).await;
@@ -332,7 +332,7 @@ impl Ssh {
                 command.arg("--gzip");
             }
 
-            command.arg(&self.ssh_target()).arg(path.as_path());
+            command.arg(self.ssh_target()).arg(path.as_path());
 
             command
         };

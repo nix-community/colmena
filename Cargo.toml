@@ -2,7 +2,7 @@
 name = "colmena"
 version = "0.5.0-pre"
 authors = ["Zhaofeng Li <hello@zhaofeng.li>"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

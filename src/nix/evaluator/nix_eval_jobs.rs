@@ -18,7 +18,7 @@ use tokio::process::Command;
 
 use super::{AttributeError, AttributeOutput, DrvSetEvaluator, EvalError, EvalResult};
 use crate::error::{ColmenaError, ColmenaResult};
-use crate::job::{null_job_handle, JobHandle};
+use crate::job::{JobHandle, null_job_handle};
 use crate::nix::{NixExpression, NixFlags, StorePath};
 use crate::util::capture_stream;
 

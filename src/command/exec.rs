@@ -8,8 +8,8 @@ use tokio::sync::Semaphore;
 
 use crate::error::ColmenaError;
 use crate::job::{JobMonitor, JobState, JobType};
-use crate::nix::node_filter::NodeFilterOpts;
 use crate::nix::Hive;
+use crate::nix::node_filter::NodeFilterOpts;
 use crate::progress::SimpleProgressOutput;
 use crate::util;
 
@@ -107,9 +107,8 @@ pub async fn run(
         let mut failed: usize = 0;
 
         for x in results {
-            match x {
-                Err(_) => failed += 1,
-                Ok(_) => (),
+            if x.is_err() {
+                failed += 1
             }
         }
 

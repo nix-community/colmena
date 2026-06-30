@@ -6,7 +6,7 @@ use std::process::ExitStatus;
 use snafu::{Backtrace, Snafu};
 use validator::ValidationErrors;
 
-use crate::nix::{key, Profile, StorePath};
+use crate::nix::{Profile, StorePath, key};
 
 pub type ColmenaResult<T> = Result<T, ColmenaError>;
 
