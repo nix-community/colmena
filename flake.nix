@@ -157,6 +157,8 @@
             }
           else
             { };
+
+        formatter = pkgs.callPackage ./formatter.nix { };
       }
     )
     // {

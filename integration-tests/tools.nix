@@ -91,37 +91,36 @@ let
         };
       };
       config = {
-        testScript =
-          ''
-            start_all()
-          ''
-          + lib.optionalString (prebuiltTarget != null) ''
-            deployer.succeed("nix-store -qR ${prebuiltSystem}")
-          ''
-          + ''
-            deployer.succeed("nix-store -qR ${pkgs.path}")
-            deployer.succeed("ln -sf ${pkgs.path} /nixpkgs")
-            deployer.succeed("mkdir -p /root/.ssh && touch /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa && cat ${sshKeys.snakeOilPrivateKey} > /root/.ssh/id_rsa")
+        testScript = ''
+          start_all()
+        ''
+        + lib.optionalString (prebuiltTarget != null) ''
+          deployer.succeed("nix-store -qR ${prebuiltSystem}")
+        ''
+        + ''
+          deployer.succeed("nix-store -qR ${pkgs.path}")
+          deployer.succeed("ln -sf ${pkgs.path} /nixpkgs")
+          deployer.succeed("mkdir -p /root/.ssh && touch /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa && cat ${sshKeys.snakeOilPrivateKey} > /root/.ssh/id_rsa")
 
-            ${lib.optionalString (length targets != 0) ''
-              for node in ${targetList}:
-                  node.wait_for_unit("sshd.service")
-                  deployer.wait_until_succeeds(f"ssh -o StrictHostKeyChecking=accept-new {node.name} true", timeout=30)
-            ''}
+          ${lib.optionalString (length targets != 0) ''
+            for node in ${targetList}:
+                node.wait_for_unit("sshd.service")
+                deployer.wait_until_succeeds(f"ssh -o StrictHostKeyChecking=accept-new {node.name} true", timeout=30)
+          ''}
 
-            deployer.succeed("cp --no-preserve=mode -r ${bundle} /tmp/bundle && chmod u+w /tmp/bundle")
+          deployer.succeed("cp --no-preserve=mode -r ${bundle} /tmp/bundle && chmod u+w /tmp/bundle")
 
-            orig_store_paths = set(deployer.succeed("ls /nix/store").strip().split("\n"))
-            def get_new_store_paths():
-                cur_store_paths = set(deployer.succeed("ls /nix/store").strip().split("\n"))
-                new_store_paths = cur_store_paths.difference(orig_store_paths)
-                deployer.log(f"{len(new_store_paths)} store paths were created")
+          orig_store_paths = set(deployer.succeed("ls /nix/store").strip().split("\n"))
+          def get_new_store_paths():
+              cur_store_paths = set(deployer.succeed("ls /nix/store").strip().split("\n"))
+              new_store_paths = cur_store_paths.difference(orig_store_paths)
+              deployer.log(f"{len(new_store_paths)} store paths were created")
 
-                l = list(map(lambda n: f"/nix/store/{n}", new_store_paths))
-                return l
+              l = list(map(lambda n: f"/nix/store/{n}", new_store_paths))
+              return l
 
-            ${cfg.testScript}
-          '';
+          ${cfg.testScript}
+        '';
       };
     };
   evalTest =
@@ -181,14 +180,13 @@ let
       virtualisation = {
         memorySize = 6144;
         writableStore = true;
-        additionalPaths =
-          [
-            "${pkgs.path}"
-          ]
-          ++ lib.optionals (prebuiltTarget != null) [
-            prebuiltSystem
-            (inputClosureOf prebuiltSystem)
-          ];
+        additionalPaths = [
+          "${pkgs.path}"
+        ]
+        ++ lib.optionals (prebuiltTarget != null) [
+          prebuiltSystem
+          (inputClosureOf prebuiltSystem)
+        ];
       };
 
       services.openssh.enable = true;

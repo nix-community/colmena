@@ -11,11 +11,10 @@ tools.runTest {
 
   colmena.test = {
     bundle = ./.;
-    testScript =
-      ''
-        colmena = "${tools.colmenaExec}"
-        evaluator = "${evaluator}"
-      ''
-      + builtins.readFile ./test-script.py;
+    testScript = ''
+      colmena = "${tools.colmenaExec}"
+      evaluator = "${evaluator}"
+    ''
+    + builtins.readFile ./test-script.py;
   };
 }

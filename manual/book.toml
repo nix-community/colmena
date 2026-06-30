@@ -1,17 +1,17 @@
 [book]
-authors = ["Zhaofeng Li"]
+authors  = ["Zhaofeng Li"]
 language = "en"
-src = "src"
-title = "Colmena (Unstable)"
+src      = "src"
+title    = "Colmena (Unstable)"
 
 [output.html]
-site-url = "/unstable/"
+site-url           = "/unstable/"
 git-repository-url = "https://github.com/zhaofengli/colmena"
-edit-url-template = "https://github.com/zhaofengli/colmena/edit/main/manual/{path}"
+edit-url-template  = "https://github.com/zhaofengli/colmena/edit/main/manual/{path}"
 
 [output.linkcheck2]
 follow-web-links = false
 
 [preprocessor.colmena]
-command = "python3 preprocess.py"
-renderer = [ "html", "epub" ]
+command  = "python3 preprocess.py"
+renderer = ["html", "epub"]
