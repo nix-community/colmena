@@ -1,0 +1,42 @@
+# Based on https://github.com/NixOS/nixpkgs/blob/master/.git-blame-ignore-revs
+#
+# This file contains a list of commits that are not likely what you
+# are looking for in a blame, such as mass reformatting or renaming.
+#
+# If a commit's line ends with `# !autorebase <command>`,
+# where <command> is an idempotent bash command that reapplies the changes from the commit,
+# the `maintainers/scripts/auto-rebase/run.sh` script can be used to rebase
+# across that commit while automatically resolving merge conflicts caused by the commit.
+#
+# You can set this file as a default ignore file for blame by running
+# the following command.
+#
+# $ git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# To temporarily not use this file add
+# --ignore-revs-file=""
+# to your blame command.
+#
+# The ignoreRevsFile can't be set globally due to blame failing if the file isn't present.
+# To not have to set the option in every repository it is needed in,
+# save the following script in your path with the name "git-bblame"
+# now you can run
+# $ git bblame $FILE
+# to use the .git-blame-ignore-revs file if it is present.
+#
+# #!/usr/bin/env bash
+# repo_root=$(git rev-parse --show-toplevel)
+# if [[ -e $repo_root/.git-blame-ignore-revs ]]; then
+#     git blame --ignore-revs-file="$repo_root/.git-blame-ignore-revs" $@
+# else
+#     git blame $@
+# fi
+
+# treewide: address clippy and deadcode warns
+e4b4f2e7cfd6d3c73b7656fb10522a76902b940c
+
+# treewide: bump edition to 2024
+a490c0498c680f8fdab2c4d483f0a335210e2311
+
+# treewide: cargo fmt
+779a2869583bc35592ec965daa7e6f56f6a00e2a
