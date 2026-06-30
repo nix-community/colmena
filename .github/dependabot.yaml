@@ -7,6 +7,10 @@ updates:
       interval: weekly
     commit-message:
       prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: nix
     directory: "/"
@@ -14,6 +18,10 @@ updates:
       interval: weekly
     commit-message:
       prefix: "flake"
+    groups:
+      inputs:
+        patterns:
+          - "*"
 
   - package-ecosystem: cargo
     directory: "/"
@@ -21,3 +29,7 @@ updates:
       interval: weekly
     commit-message:
       prefix: "cargo"
+    groups:
+      cargo:
+        patterns:
+          - "*"
