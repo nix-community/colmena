@@ -16,10 +16,10 @@ jobs:
     if: github.repository == 'zhaofengli/colmena'
 
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.0
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@c723f3a885e3f1d866d91f4f0c33dd44b1fc7c60 # v18
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Enable Binary Cache
@@ -39,7 +39,7 @@ jobs:
         run: nix build .#manual -L
 
       - name: Deploy manual
-        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
           branch: gh-pages
           folder: result
@@ -53,7 +53,7 @@ jobs:
         if: ${{ env.api_version == env.latest_stable_api }}
 
       - name: Deploy redirect farm
-        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
           branch: gh-pages
           folder: result-redirectFarm
