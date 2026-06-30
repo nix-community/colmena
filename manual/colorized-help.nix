@@ -9,20 +9,19 @@
 with builtins;
 
 let
-  subcommands =
-    [
-      null
-      "apply"
-    ]
-    ++ lib.optional stdenv.isLinux "apply-local"
-    ++ [
-      "build"
-      "upload-keys"
-      "eval"
-      "exec"
-      "nix-info"
-      "repl"
-    ];
+  subcommands = [
+    null
+    "apply"
+  ]
+  ++ lib.optional stdenv.isLinux "apply-local"
+  ++ [
+    "build"
+    "upload-keys"
+    "eval"
+    "exec"
+    "nix-info"
+    "repl"
+  ];
   renderHelp =
     subcommand:
     let

@@ -11,10 +11,17 @@
         };
       };
 
-      host-a = { name, nodes, pkgs, ... }: {
-        boot.isContainer = true;
-        time.timeZone = nodes.host-b.config.time.timeZone;
-      };
+      host-a =
+        {
+          name,
+          nodes,
+          pkgs,
+          ...
+        }:
+        {
+          boot.isContainer = true;
+          time.timeZone = nodes.host-b.config.time.timeZone;
+        };
       host-b = {
         deployment = {
           targetHost = "somehost.tld";

@@ -24,7 +24,8 @@ let
     ./shell.nix
   ];
   srcFiles = fs.difference ./. srcIgnored;
-in rustPlatform.buildRustPackage rec {
+in
+rustPlatform.buildRustPackage rec {
   pname = "colmena";
   version = "0.5.0-pre";
 
