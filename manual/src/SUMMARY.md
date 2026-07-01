@@ -4,6 +4,7 @@
 - [Tutorial](./tutorial/index.md)
     - [Usage with Flakes](./tutorial/flakes.md)
     - [Migrating from NixOps/morph](./tutorial/migration.md)
+    - [Bootstrapping a new install](./tutorial/bootstrapping-a-new-system.md)
 - [Features](./features/index.md)
     - [Node Tagging](./features/tags.md)
     - [Local Deployment](./features/apply-local.md)
