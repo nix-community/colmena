@@ -489,6 +489,15 @@ impl Hive {
         matches!(self.path(), HivePath::Flake(_))
     }
 
+    /// Returns the full `colmenaHive` acceesor or `None` if not a flake.
+    fn flake_installable(&self) -> Option<String> {
+        if let HivePath::Flake(flake) = self.path() {
+            Some(format!("{}#colmenaHive", flake.uri()))
+        } else {
+            None
+        }
+    }
+
     fn nix_instantiate(&self, expression: &str) -> NixInstantiate<'_> {
         NixInstantiate::new(self, expression.to_owned())
     }
@@ -546,13 +555,11 @@ impl<'hive> NixInstantiate<'hive> {
             }
             EvaluationMethod::DirectFlakeEval => {
                 let mut command = Command::new("nix");
-                let flake = if let HivePath::Flake(flake) = self.hive.path() {
-                    flake
-                } else {
-                    panic!("The DirectFlakeEval evaluation method only support flakes");
-                };
 
-                let hive_installable = format!("{}#colmenaHive", flake.uri());
+                let hive_installable = self
+                    .hive
+                    .flake_installable()
+                    .expect("DirectFlakeEval only supports flakes");
 
                 let mut full_expression = self.hive.get_base_expression();
                 full_expression += &self.expression;
@@ -597,6 +604,17 @@ impl NixExpression for EvalSelectedExpression<'_> {
             self.hive.get_base_expression(),
             self.nodes_expr.expression(),
         )
+    }
+
+    fn installable(&self) -> Option<String> {
+        match self.hive.evaluation_method {
+            EvaluationMethod::NixInstantiate => None,
+            EvaluationMethod::DirectFlakeEval => Some(
+                self.hive
+                    .flake_installable()
+                    .expect("DirectFlakeEval only supports flakes"),
+            ),
+        }
     }
 
     fn requires_flakes(&self) -> bool {

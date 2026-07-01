@@ -330,6 +330,26 @@ impl Deployment {
                     }
                 }
 
+                // this will include nodes evaluator never reported back
+                // without this deployment would silently succeed doing nothing
+                // https://github.com/nix-community/colmena/issues/296
+                let missing: Vec<&NodeName> = targets
+                    .keys()
+                    .filter(|name| !failed_attributes.contains(name))
+                    .collect();
+
+                if !missing.is_empty() {
+                    let names = missing
+                        .iter()
+                        .map(|name| name.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(", ");
+
+                    return Err(ColmenaError::Unknown {
+                        message: format!("Evaluation produced no result for: {}", names),
+                    });
+                }
+
                 // HACK: Still return Ok() because we need to wait for existing jobs to finish
                 if !failed_attributes.is_empty() {
                     job.failure(&ColmenaError::AttributeEvaluationError)?;

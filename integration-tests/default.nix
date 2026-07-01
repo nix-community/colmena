@@ -20,7 +20,7 @@
     inherit pkgs;
     pure = false;
   };
-  #flakes-streaming = import ./flakes { inherit pkgs; evaluator = "streaming"; };
+  flakes-streaming = import ./flakes { inherit pkgs; evaluator = "streaming"; };
 
   parallel = import ./parallel { inherit pkgs; };
 
