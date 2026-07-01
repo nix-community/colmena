@@ -70,6 +70,9 @@ pub struct NodeConfig {
     #[serde(rename = "buildOnTarget")]
     build_on_target: bool,
 
+    #[serde(rename = "noSubstitute")]
+    no_substitute: bool,
+
     tags: Vec<String>,
 
     #[serde(rename = "replaceUnknownProfiles")]
@@ -186,6 +189,7 @@ impl NodeConfig {
             let mut host = Ssh::new(self.target_user.clone(), target_host.clone());
             host.set_privilege_escalation_command(self.privilege_escalation_command.clone());
             host.set_extra_ssh_options(self.extra_ssh_options.clone());
+            host.set_use_substitutes(!self.no_substitute);
 
             if let Some(target_port) = self.target_port {
                 host.set_port(target_port);

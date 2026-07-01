@@ -39,6 +39,9 @@ pub struct Ssh {
     /// Whether to use the experimental `nix copy` command.
     use_nix3_copy: bool,
 
+    /// Whether to allow substitutes.
+    use_substitutes: bool,
+
     job: Option<JobHandle>,
 }
 
@@ -193,6 +196,7 @@ impl Ssh {
             ssh_config: None,
             privilege_escalation_command: Vec::new(),
             extra_ssh_options: Vec::new(),
+            use_substitutes: true,
             use_nix3_copy: false,
             job: None,
         }
@@ -208,6 +212,10 @@ impl Ssh {
 
     pub fn set_privilege_escalation_command(&mut self, command: Vec<String>) {
         self.privilege_escalation_command = command;
+    }
+
+    pub fn set_use_substitutes(&mut self, enable: bool) {
+        self.use_substitutes = enable;
     }
 
     pub fn set_extra_ssh_options(&mut self, options: Vec<String>) {
@@ -278,13 +286,16 @@ impl Ssh {
                 "--no-check-sigs",
             ]);
 
-            if options.use_substitutes {
-                command.args([
-                    "--substitute-on-destination",
-                    // needed due to UX bug in ssh-ng://
-                    "--builders-use-substitutes",
-                ]);
-            }
+            match (options.use_substitutes, self.use_substitutes) {
+                (None, true) | (Some(true), _) => {
+                    command.args([
+                        "--substitute-on-destination",
+                        // needed due to UX bug in ssh-ng://
+                        "--builders-use-substitutes",
+                    ]);
+                }
+                (None, false) | (Some(false), _) => {}
+            };
 
             if let Some("drv") = path.extension().and_then(OsStr::to_str) {
                 command.arg("--derivation");
@@ -325,9 +336,14 @@ impl Ssh {
             if options.include_outputs {
                 command.arg("--include-outputs");
             }
-            if options.use_substitutes {
-                command.arg("--use-substitutes");
-            }
+
+            match (options.use_substitutes, self.use_substitutes) {
+                (None, true) | (Some(true), _) => {
+                    command.arg("--use-substitutes");
+                }
+                (None, false) | (Some(false), _) => {}
+            };
+
             if options.gzip {
                 command.arg("--gzip");
             }

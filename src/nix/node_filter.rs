@@ -243,6 +243,7 @@ mod tests {
             target_port: None,
             allow_local_deployment: false,
             build_on_target: false,
+            no_substitute: false,
             replace_unknown_profiles: false,
             privilege_escalation_command: vec![],
             extra_ssh_options: vec![],

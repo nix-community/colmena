@@ -23,7 +23,7 @@ pub enum CopyDirection {
 #[derive(Copy, Clone, Debug)]
 pub struct CopyOptions {
     include_outputs: bool,
-    use_substitutes: bool,
+    use_substitutes: Option<bool>,
     gzip: bool,
 }
 
@@ -40,7 +40,7 @@ impl Default for CopyOptions {
     fn default() -> Self {
         Self {
             include_outputs: true,
-            use_substitutes: true,
+            use_substitutes: None,
             gzip: true,
         }
     }
@@ -53,7 +53,7 @@ impl CopyOptions {
     }
 
     pub fn use_substitutes(mut self, val: bool) -> Self {
-        self.use_substitutes = val;
+        self.use_substitutes = Some(val);
         self
     }
 

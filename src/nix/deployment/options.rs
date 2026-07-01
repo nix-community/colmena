@@ -8,7 +8,7 @@ use crate::nix::CopyOptions;
 #[derive(Clone, Debug)]
 pub struct Options {
     /// Whether to use binary caches when copying closures to remote hosts.
-    pub(super) substituters_push: bool,
+    pub(super) substituters_push: Option<bool>,
 
     /// Whether to use gzip when copying closures to remote hosts.
     pub(super) gzip: bool,
@@ -54,7 +54,7 @@ impl std::fmt::Display for EvaluatorType {
 
 impl Options {
     pub fn set_substituters_push(&mut self, value: bool) {
-        self.substituters_push = value;
+        self.substituters_push = Some(value);
     }
 
     pub fn set_gzip(&mut self, value: bool) {
@@ -87,17 +87,18 @@ impl Options {
 
     pub fn to_copy_options(&self) -> CopyOptions {
         let options = CopyOptions::default();
-
-        options
-            .use_substitutes(self.substituters_push)
-            .gzip(self.gzip)
+        let options = match self.substituters_push {
+            Some(val) => options.use_substitutes(val),
+            _ => options,
+        };
+        options.gzip(self.gzip)
     }
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
-            substituters_push: true,
+            substituters_push: None,
             gzip: true,
             upload_keys: true,
             reboot: false,
