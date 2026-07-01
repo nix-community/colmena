@@ -351,6 +351,8 @@ impl Ssh {
             "-o",
             "BatchMode=yes",
             "-T",
+            "-o", "ControlMaster=no",
+            "-o", "ControlPath=/var/empty/non-existant",
         ]
         .iter()
         .map(|s| s.to_string())
