@@ -10,6 +10,13 @@ with builtins; rec {
         default = name;
         type = types.str;
       };
+      serviceName = lib.mkOption {
+        description = ''
+          Name of the systemd services.
+        '';
+        default = "${config.name}-key";
+        type = types.str;
+      };
       text = lib.mkOption {
         description = ''
           Content of the key.

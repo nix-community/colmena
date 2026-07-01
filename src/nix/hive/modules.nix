@@ -66,7 +66,7 @@ with builtins; {
     # <https://github.com/systemd/systemd/issues/3642>
     keyServiceModule = { pkgs, lib, config, ... }: {
       systemd.paths = lib.mapAttrs' (name: val: {
-        name = "${name}-key";
+        name = config.serviceName;
         value = {
           wantedBy = [ "paths.target" ];
           pathConfig = {
@@ -76,7 +76,7 @@ with builtins; {
       }) config.deployment.keys;
 
       systemd.services = lib.mapAttrs' (name: val: {
-        name = "${name}-key";
+        name = config.serviceName;
         value = {
           enable = true;
           serviceConfig = {
