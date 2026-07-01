@@ -339,7 +339,7 @@ with builtins; rec {
               };
             }
         '';
-        type = types.nullOr types.unspecified;
+        type = types.unspecified;
         default = null;
       };
     };

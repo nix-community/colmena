@@ -26,7 +26,6 @@ let
     rawFlake.outputs ? darwinConfigurations &&
     rawFlake.outputs.darwinConfigurations ? ${name};
 
-
   uncheckedHive = let
     flakeToHive = rawFlake:
       if rawFlake.outputs ? colmena then rawFlake.outputs.colmena else throw "Flake must define outputs.colmena.";
@@ -123,25 +122,69 @@ let
   lib = nixpkgs.lib;
   reservedNames = [ "defaults" "darwinDefaults" "network" "meta" ];
 
-  # Determine system type for a node
-  # Priority: 1. Explicit deployment.systemType, 2. Auto-detect from darwinConfigurations
+  # The `specialArgs` passed to every node evaluation.
+  mkSpecialArgs = name: {
+    inherit name;
+    nodes = uncheckedNodes;
+  } // hive.meta.specialArgs // (hive.meta.nodeSpecialArgs.${name} or {});
+
+  # The Nixpkgs to use for a node: its per-node override, else the hive default.
+  npkgsFor = name:
+    if hasAttr name hive.meta.nodeNixpkgs
+    then mkNixpkgs "meta.nodeNixpkgs.${name}" hive.meta.nodeNixpkgs.${name}
+    else nixpkgs;
+
+  # Determine the system type for a node.
+  #
+  # Priority:
+  #   1. An explicit `deployment.systemType` set anywhere in the node's config.
+  #   2. Auto-detection from the flake's `darwinConfigurations`.
+  #   3. Default: "nixos".
+  #
+  # `deployment.systemType` must be read *robustly*: a node config is usually a
+  # module *function* (`{ ... }: { ... }`), whose attributes cannot be observed
+  # by plain attribute introspection. We therefore evaluate only the
+  # platform-independent deployment options through the module system.
+  # `_module.check = false` lets us ignore all the NixOS/darwin options the
+  # config also sets, and lazy evaluation means those unrelated options are
+  # never forced. The probe is wrapped in `tryEval` so a node with unusual
+  # module-argument requirements falls back to attribute introspection rather
+  # than aborting the whole evaluation.
   getNodeSystemType = name: configs: let
-    # Find if any config sets deployment.systemType
-    explicitType = lib.findFirst
+    probe = tryEval (lib.evalModules {
+      modules = [
+        colmenaOptions.deploymentOptions
+        { _module.check = false; _module.args.pkgs = nixpkgs; }
+      ] ++ configs;
+      specialArgs = mkSpecialArgs name;
+    }).config.deployment.systemType;
+
+    # Fallback: attribute introspection, which only sees plain-attrset configs.
+    introspected = lib.findFirst
       (c: c ? deployment && c.deployment ? systemType)
       null
       configs;
+
+    explicitType =
+      if probe.success then probe.value
+      else if introspected != null then introspected.deployment.systemType
+      else "nixos";
   in
-    if explicitType != null then explicitType.deployment.systemType
+    # `probe.value` carries the option default ("nixos") when unset, so we let
+    # flake auto-detection win over a non-explicit "nixos".
+    if explicitType != "nixos" then explicitType
     else if isDarwinFromFlake name then "darwin"
     else "nixos";
 
+  # Memoize per-node system type so the detection probe runs at most once per
+  # node (it is consulted both when evaluating the node and its toplevel).
+  nodeSystemTypes = listToAttrs (map
+    (name: { inherit name; value = getNodeSystemType name (configsFor name); })
+    nodeNames);
+
   # Evaluate a NixOS node
   evalNixOSNode = name: configs: let
-    npkgs =
-      if hasAttr name hive.meta.nodeNixpkgs
-      then mkNixpkgs "meta.nodeNixpkgs.${name}" hive.meta.nodeNixpkgs.${name}
-      else nixpkgs;
+    npkgs = npkgsFor name;
     evalConfig = import (npkgs.path + "/nixos/lib/eval-config.nix");
 
     # Here we need to merge the configurations in meta.nixpkgs
@@ -174,43 +217,34 @@ let
       colmenaOptions.deploymentOptions
       hive.defaults
     ] ++ configs;
-    specialArgs = {
-      inherit name;
-      nodes = uncheckedNodes;
-    } // hive.meta.specialArgs // (hive.meta.nodeSpecialArgs.${name} or {});
+    specialArgs = mkSpecialArgs name;
   };
 
   # Evaluate a darwin node
   evalDarwinNode = name: configs: let
-    npkgs =
-      if hasAttr name hive.meta.nodeNixpkgs
-      then mkNixpkgs "meta.nodeNixpkgs.${name}" hive.meta.nodeNixpkgs.${name}
-      else nixpkgs;
+    npkgs = npkgsFor name;
 
-    # Get the nix-darwin input from meta
+    # Get the nix-darwin input from meta. It must be provided for darwin nodes.
     darwinInput = hive.meta.nix-darwin or null;
-    # Assert that nix-darwin is provided (assigns true to _ if assertion passes)
-    _ = assert lib.assertMsg (darwinInput != null)
-      "meta.nix-darwin must be set when deploying darwin nodes. Add your nix-darwin flake input to meta.nix-darwin.";
-      true;
 
-    # Use darwin's eval-config
-    # nix-darwin provides darwinSystem in lib or as a flake output
+    # Use darwin's eval-config. nix-darwin exposes `darwinSystem` under `lib` or
+    # as a top-level flake output. The null check must live here (not in a
+    # separate `let` binding) so it is actually forced when the node is
+    # evaluated — an unreferenced `assert` binding would never run.
     evalConfig =
-      if darwinInput ? lib.darwinSystem then darwinInput.lib.darwinSystem
+      if darwinInput == null then
+        throw "meta.nix-darwin must be set when deploying darwin nodes. Add your nix-darwin flake input to meta.nix-darwin."
+      else if darwinInput ? lib.darwinSystem then darwinInput.lib.darwinSystem
       else if darwinInput ? darwinSystem then darwinInput.darwinSystem
-      else throw "Could not find darwinSystem in meta.nix-darwin. Expected nix-darwin flake input.";
+      else throw "Could not find darwinSystem in meta.nix-darwin. Expected a nix-darwin flake input.";
 
     # Darwin-specific nixpkgs module
-    nixpkgsModule = { config, lib, ... }: let
+    nixpkgsModule = { lib, ... }: let
       hasTypedConfig = lib.versionAtLeast lib.version "22.11pre";
     in {
       nixpkgs.overlays = lib.mkBefore npkgs.overlays;
       nixpkgs.config = if hasTypedConfig then lib.mkBefore npkgs.config else lib.mkOptionDefault npkgs.config;
     };
-
-    # The darwin defaults (if any)
-    darwinDefaults = hive.darwinDefaults or {};
 
   in evalConfig {
     inherit (npkgs.stdenv.hostPlatform) system;
@@ -220,17 +254,14 @@ let
       colmenaModules.assertionModule
       colmenaOptions.deploymentOptions
       hive.defaults
-      darwinDefaults
+      hive.darwinDefaults
     ] ++ configs;
-    specialArgs = {
-      inherit name;
-      nodes = uncheckedNodes;
-    } // hive.meta.specialArgs // (hive.meta.nodeSpecialArgs.${name} or {});
+    specialArgs = mkSpecialArgs name;
   };
 
   # Evaluate a node based on its system type
   evalNode = name: configs: let
-    systemType = getNodeSystemType name configs;
+    systemType = nodeSystemTypes.${name};
   in
     if systemType == "darwin" then evalDarwinNode name configs
     else evalNixOSNode name configs;
@@ -260,7 +291,7 @@ let
   # Get the toplevel/system output based on node system type
   # NixOS uses system.build.toplevel, darwin uses system directly
   getNodeToplevel = name: node: let
-    systemType = getNodeSystemType name (configsFor name);
+    systemType = nodeSystemTypes.${name};
   in
     if systemType == "darwin" then node.system
     else node.config.system.build.toplevel;

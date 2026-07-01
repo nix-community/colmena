@@ -48,6 +48,14 @@ pub const SYSTEM_PROFILE: &str = "/nix/var/nix/profiles/system";
 /// Path to the system profile that's currently active.
 pub const CURRENT_PROFILE: &str = "/run/current-system";
 
+/// Default nix bin directory on macOS.
+///
+/// Root's PATH on macOS doesn't include nix binaries by default
+/// (`/usr/bin:/bin:/usr/sbin:/sbin`), and sudo's `secure_path` strips it too.
+/// This is the canonical path that both `/var/root/.nix-profile` and
+/// `/nix/var/nix/profiles/default` symlink to.
+pub const DARWIN_NIX_BIN_PATH: &str = "/nix/var/nix/profiles/default/bin";
+
 /// The type of system a node is running.
 ///
 /// This determines how profiles are validated and activated.
@@ -65,11 +73,6 @@ impl SystemType {
     /// Returns whether this is a darwin system.
     pub fn is_darwin(&self) -> bool {
         matches!(self, SystemType::Darwin)
-    }
-
-    /// Returns whether this is a NixOS system.
-    pub fn is_nixos(&self) -> bool {
-        matches!(self, SystemType::NixOS)
     }
 }
 

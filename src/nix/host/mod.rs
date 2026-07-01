@@ -91,10 +91,6 @@ impl RebootOptions {
         self.system_type = val;
         self
     }
-
-    pub fn get_system_type(&self) -> SystemType {
-        self.system_type
-    }
 }
 
 /// A Nix(OS)/nix-darwin host.

@@ -12,14 +12,22 @@ use tokio::time::sleep;
 use super::{CopyDirection, CopyOptions, Host, RebootOptions, key_uploader};
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
-use crate::nix::{CURRENT_PROFILE, Goal, Key, Profile, SYSTEM_PROFILE, StorePath, SystemType};
+use crate::nix::{
+    CURRENT_PROFILE, DARWIN_NIX_BIN_PATH, Goal, Key, Profile, SYSTEM_PROFILE, StorePath, SystemType,
+};
 use crate::util::{CommandExecution, CommandExt};
 
-/// Default nix bin directory on macOS.
-/// Root's PATH on macOS doesn't include nix binaries by default
-/// (/usr/bin:/bin:/usr/sbin:/sbin). This is the canonical path that
-/// both /var/root/.nix-profile and /nix/var/nix/profiles/default symlink to.
-const DARWIN_NIX_BIN_PATH: &str = "/nix/var/nix/profiles/default/bin";
+/// Resolves a nix binary name to run on the remote target.
+///
+/// On darwin, root's PATH doesn't include the nix binaries, so we use an
+/// absolute path; elsewhere the bare name is resolved via the remote PATH.
+fn remote_nix_bin(system_type: SystemType, name: &str) -> String {
+    if system_type.is_darwin() {
+        format!("{DARWIN_NIX_BIN_PATH}/{name}")
+    } else {
+        name.to_string()
+    }
+}
 
 /// A remote machine connected over SSH.
 #[derive(Debug)]
@@ -69,12 +77,7 @@ impl Host for Ssh {
     }
 
     async fn realize_remote(&mut self, derivation: &StorePath) -> ColmenaResult<Vec<StorePath>> {
-        // Use full path for nix-store on Darwin since root's PATH doesn't include nix binaries
-        let nix_store = if self.system_type.is_darwin() {
-            format!("{}/nix-store", DARWIN_NIX_BIN_PATH)
-        } else {
-            "nix-store".to_string()
-        };
+        let nix_store = remote_nix_bin(self.system_type, "nix-store");
         let command = self.ssh(&[
             &nix_store,
             "--no-gc-warning",
@@ -123,12 +126,7 @@ impl Host for Ssh {
 
         if goal.should_switch_profile() {
             let path = profile.as_path().to_str().unwrap();
-            // Use full path for nix-env on Darwin since root's PATH doesn't include nix binaries
-            let nix_env = if system_type.is_darwin() {
-                format!("{}/nix-env", DARWIN_NIX_BIN_PATH)
-            } else {
-                "nix-env".to_string()
-            };
+            let nix_env = remote_nix_bin(system_type, "nix-env");
             let set_profile = self.ssh(&[&nix_env, "--profile", SYSTEM_PROFILE, "--set", path]);
             self.run_command(set_profile).await?;
         }
@@ -143,8 +141,10 @@ impl Host for Ssh {
     }
 
     async fn get_current_system_profile(&mut self) -> ColmenaResult<Profile> {
+        // `readlink -f` (not GNU-only `-e`) so this also works on macOS/BSD
+        // targets. CURRENT_PROFILE is always a valid symlink on a live system.
         let paths = self
-            .ssh(&["readlink", "-e", CURRENT_PROFILE])
+            .ssh(&["readlink", "-f", CURRENT_PROFILE])
             .capture_output()
             .await?;
 
@@ -159,9 +159,14 @@ impl Host for Ssh {
     }
 
     async fn get_main_system_profile(&mut self) -> ColmenaResult<Profile> {
+        // `readlink -f` for GNU/BSD portability. The `[ -e ]` guard preserves
+        // the "final target must exist" semantics of the old `readlink -e`
+        // fallback: a bare `-f` prints a non-existent path (exit 0) under GNU,
+        // which would wrongly suppress the fallback to CURRENT_PROFILE.
         let command = format!(
-            "\"readlink -e {} || readlink -e {}\"",
-            SYSTEM_PROFILE, CURRENT_PROFILE
+            "\"if [ -e {sys} ]; then readlink -f {sys}; else readlink -f {cur}; fi\"",
+            sys = SYSTEM_PROFILE,
+            cur = CURRENT_PROFILE
         );
 
         let paths = self.ssh(&["sh", "-c", &command]).capture_output().await?;
@@ -186,7 +191,7 @@ impl Host for Ssh {
             return self.initate_reboot().await;
         }
 
-        let system_type = options.get_system_type();
+        let system_type = options.system_type;
         let old_id = self.get_boot_id(system_type).await?;
 
         self.initate_reboot().await?;
@@ -308,7 +313,14 @@ impl Ssh {
         let ssh_options = self.ssh_options();
         let ssh_options_str = ssh_options.join(" ");
 
-        let mut command = if self.use_nix3_copy {
+        // Darwin must use `nix copy` (ssh-ng): the legacy `nix-copy-closure`
+        // binary runs `nix-store --serve` on the remote via the plain `ssh://`
+        // store and relies on the remote PATH, which lacks nix binaries for root
+        // on macOS. It has no way to point at a remote program, whereas the
+        // ssh-ng path below already injects `remote-program=.../nix-daemon`.
+        let use_nix3_copy = self.use_nix3_copy || self.system_type.is_darwin();
+
+        let mut command = if use_nix3_copy {
             // experimental `nix copy` command with ssh-ng://
             let mut command = Command::new("nix");
 
@@ -347,7 +359,7 @@ impl Ssh {
             let mut query_params = Vec::new();
 
             if self.system_type.is_darwin() {
-                query_params.push(format!("remote-program={}/nix-daemon", DARWIN_NIX_BIN_PATH));
+                query_params.push(format!("remote-program={DARWIN_NIX_BIN_PATH}/nix-daemon"));
             }
 
             if options.gzip {
