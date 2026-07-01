@@ -27,7 +27,7 @@ pub async fn run(hive: Hive) -> ColmenaResult<()> {
     if nix_version.at_least(2, 4) {
         // `nix repl` is expected to be marked as experimental:
         // <https://github.com/NixOS/nix/issues/5604>
-        repl_cmd.args(["--experimental-features", "nix-command flakes"]);
+        repl_cmd.args(["--experimental-features", "nix-command flakes pipe-operators"]);
     }
 
     if nix_version.at_least(2, 10) {
