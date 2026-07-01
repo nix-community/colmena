@@ -343,19 +343,29 @@ impl Ssh {
     }
 
     fn ssh_options(&self) -> Vec<String> {
-        // TODO: Allow configuation of SSH parameters
+        // TODO: Allow configuration of SSH parameters
 
-        let mut options: Vec<String> = [
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            "-o",
-            "BatchMode=yes",
-            "-T",
-        ]
-        .iter()
-        .map(|s| s.to_string())
-        .chain(self.extra_ssh_options.clone())
-        .collect();
+        // NOTE: extra_ssh_options needs to come first so that
+        // deployment.sshOptions can override our settings.
+        //
+        // From ssh_config(5):
+        // > Unless noted otherwise, for each parameter, the first obtained
+        // > value will be used.
+        let mut options: Vec<String> = self
+            .extra_ssh_options
+            .iter()
+            .cloned()
+            .chain(
+                [
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    "-o",
+                    "BatchMode=yes",
+                    "-T",
+                ]
+                .map(String::from),
+            )
+            .collect();
 
         if let Some(port) = self.port {
             options.push("-p".to_string());
