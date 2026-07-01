@@ -2,6 +2,7 @@
 
 use super::*;
 
+use crate::nix::SystemType;
 use std::collections::HashSet;
 use std::fs;
 use std::hash::Hash;
@@ -672,4 +673,92 @@ fn test_hive_get_meta() {
     eprintln!("{:?}", eval);
 
     assert!(!eval.allow_apply_all);
+}
+
+/// Builds a hive whose `meta.nix-darwin` is a minimal stub — just enough for a
+/// darwin node to evaluate its `deployment` config in tests without a real
+/// nix-darwin input. It mimics `darwinSystem` closely enough to resolve
+/// `config.deployment` (all `deployment_info` reads) by running the module
+/// system with type checking disabled. `{body}` is the node's config expression.
+fn darwin_hive_with(body: &str) -> String {
+    format!(
+        r#"
+      {{
+        meta.nix-darwin.darwinSystem = {{ modules, specialArgs, ... }}:
+          (import <nixpkgs/lib>).evalModules {{
+            modules = modules ++ [ {{ _module.check = false; }} ];
+            inherit specialArgs;
+          }};
+        test = {body};
+      }}
+    "#
+    )
+}
+
+#[test]
+fn test_system_type_darwin() {
+    // deployment.systemType = "darwin" (function-form module) should be accepted
+    // and routed to the darwin evaluator (here backed by the stub above).
+    TempHive::valid(&darwin_hive_with(
+        r#"{ ... }: {
+          deployment.systemType = "darwin";
+        }"#,
+    ));
+}
+
+#[test]
+fn test_system_type_darwin_attrset() {
+    // An attribute-set node (the form used in the PR docs) is detected too.
+    TempHive::valid(&darwin_hive_with(
+        r#"{
+          deployment.systemType = "darwin";
+        }"#,
+    ));
+}
+
+#[test]
+fn test_system_type_darwin_requires_nix_darwin() {
+    // Regression test for the eval-branch selection: a darwin node written as a
+    // module *function* must be routed to the darwin evaluator. Previously such
+    // configs were misdetected as NixOS (attribute introspection cannot see into
+    // a function), so this hive would have evaluated successfully as NixOS.
+    // Without meta.nix-darwin, the darwin evaluator must fail with a clear error.
+    TempHive::invalid(
+        r#"
+      {
+        test = { ... }: {
+          deployment.systemType = "darwin";
+        };
+      }
+    "#,
+    );
+}
+
+#[test]
+fn test_system_type_nixos_default() {
+    // systemType defaults to "nixos"
+    let hive = TempHive::new(
+        r#"
+      {
+        test = { ... }: {
+          boot.isContainer = true;
+        };
+      }
+    "#,
+    );
+    let nodes = block_on(hive.deployment_info()).unwrap();
+    let test = &nodes[&node!("test")];
+    assert_eq!(SystemType::NixOS, test.system_type());
+}
+
+#[test]
+fn test_system_type_darwin_parsed() {
+    let hive = TempHive::new(&darwin_hive_with(
+        r#"{ ... }: {
+          deployment.systemType = "darwin";
+        }"#,
+    ));
+    let nodes = block_on(hive.deployment_info()).unwrap();
+    let test = &nodes[&node!("test")];
+    assert_eq!(SystemType::Darwin, test.system_type());
 }

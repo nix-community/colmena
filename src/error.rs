@@ -46,9 +46,6 @@ pub enum ColmenaError {
     #[snafu(display("Store path {:?} is not a derivation", store_path))]
     NotADerivation { store_path: StorePath },
 
-    #[snafu(display("Invalid NixOS system profile"))]
-    InvalidProfile,
-
     #[snafu(display("Unknown active profile: {:?}", profile))]
     ActiveProfileUnknown { profile: Profile },
 

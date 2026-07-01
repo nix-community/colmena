@@ -8,8 +8,25 @@ use tokio::process::Command;
 use super::{CopyDirection, CopyOptions, Host, key_uploader};
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
-use crate::nix::{CURRENT_PROFILE, Goal, Key, NixFlags, Profile, SYSTEM_PROFILE, StorePath};
+use crate::nix::{
+    CURRENT_PROFILE, DARWIN_NIX_BIN_PATH, Goal, Key, NixFlags, Profile, SYSTEM_PROFILE, StorePath,
+    SystemType,
+};
 use crate::util::{CommandExecution, CommandExt};
+
+/// Resolves a nix binary name to an absolute path when running on macOS.
+///
+/// The [`Local`] host always executes on the machine running Colmena, so the
+/// relevant OS is the compile target. On macOS, root's PATH (and sudo's
+/// `secure_path`) excludes the nix profile bin dir, so we must use an absolute
+/// path; on other platforms the bare name is resolved via PATH as usual.
+fn local_nix_bin(name: &str) -> String {
+    if cfg!(target_os = "macos") {
+        format!("{DARWIN_NIX_BIN_PATH}/{name}")
+    } else {
+        name.to_string()
+    }
+}
 
 /// The local machine running Colmena.
 ///
@@ -44,7 +61,7 @@ impl Host for Local {
     }
 
     async fn realize_remote(&mut self, derivation: &StorePath) -> ColmenaResult<Vec<StorePath>> {
-        let mut command = Command::new("nix-store");
+        let mut command = Command::new(local_nix_bin("nix-store"));
 
         command.args(self.nix_options.to_nix_store_args());
         command
@@ -78,20 +95,39 @@ impl Host for Local {
         Ok(())
     }
 
-    async fn activate(&mut self, profile: &Profile, goal: Goal) -> ColmenaResult<()> {
+    async fn activate(
+        &mut self,
+        profile: &Profile,
+        goal: Goal,
+        system_type: SystemType,
+    ) -> ColmenaResult<()> {
         if !goal.requires_activation() {
+            return Err(ColmenaError::Unsupported);
+        }
+
+        // Check if this goal is supported for Darwin
+        if system_type.is_darwin() && !goal.supported_on_darwin() {
             return Err(ColmenaError::Unsupported);
         }
 
         if goal.should_switch_profile() {
             let path = profile.as_path().to_str().unwrap();
-            self.make_privileged_command(&["nix-env", "--profile", SYSTEM_PROFILE, "--set", path])
-                .passthrough()
-                .await?;
+            let nix_env = local_nix_bin("nix-env");
+            self.make_privileged_command(&[
+                nix_env.as_str(),
+                "--profile",
+                SYSTEM_PROFILE,
+                "--set",
+                path,
+            ])
+            .passthrough()
+            .await?;
         }
 
         let command = {
-            let activation_command = profile.activation_command(goal).unwrap();
+            let activation_command = profile
+                .activation_command(goal, system_type)
+                .ok_or(ColmenaError::Unsupported)?;
             self.make_privileged_command(&activation_command)
         };
 
@@ -103,8 +139,10 @@ impl Host for Local {
     }
 
     async fn get_current_system_profile(&mut self) -> ColmenaResult<Profile> {
+        // `readlink -f` (not GNU-only `-e`) so this also works on macOS/BSD.
+        // CURRENT_PROFILE is always a valid symlink on a live system.
         let paths = Command::new("readlink")
-            .args(["-e", CURRENT_PROFILE])
+            .args(["-f", CURRENT_PROFILE])
             .capture_output()
             .await?;
 
@@ -119,12 +157,17 @@ impl Host for Local {
     }
 
     async fn get_main_system_profile(&mut self) -> ColmenaResult<Profile> {
+        // `readlink -f` for GNU/BSD portability. The `[ -e ]` guard preserves
+        // the "final target must exist" semantics of the old `readlink -e`
+        // fallback: a bare `-f` prints a non-existent path (exit 0) under GNU,
+        // which would wrongly suppress the fallback to CURRENT_PROFILE.
         let paths = Command::new("sh")
             .args([
                 "-c",
                 &format!(
-                    "readlink -e {} || readlink -e {}",
-                    SYSTEM_PROFILE, CURRENT_PROFILE
+                    "if [ -e {sys} ]; then readlink -f {sys}; else readlink -f {cur}; fi",
+                    sys = SYSTEM_PROFILE,
+                    cur = CURRENT_PROFILE
                 ),
             ])
             .capture_output()

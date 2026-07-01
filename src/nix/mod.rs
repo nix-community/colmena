@@ -48,6 +48,43 @@ pub const SYSTEM_PROFILE: &str = "/nix/var/nix/profiles/system";
 /// Path to the system profile that's currently active.
 pub const CURRENT_PROFILE: &str = "/run/current-system";
 
+/// Default nix bin directory on macOS.
+///
+/// Root's PATH on macOS doesn't include nix binaries by default
+/// (`/usr/bin:/bin:/usr/sbin:/sbin`), and sudo's `secure_path` strips it too.
+/// This is the canonical path that both `/var/root/.nix-profile` and
+/// `/nix/var/nix/profiles/default` symlink to.
+pub const DARWIN_NIX_BIN_PATH: &str = "/nix/var/nix/profiles/default/bin";
+
+/// The type of system a node is running.
+///
+/// This determines how profiles are validated and activated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SystemType {
+    /// NixOS system using switch-to-configuration for activation.
+    #[default]
+    NixOS,
+    /// macOS system using nix-darwin activation scripts.
+    Darwin,
+}
+
+impl SystemType {
+    /// Returns whether this is a darwin system.
+    pub fn is_darwin(&self) -> bool {
+        matches!(self, SystemType::Darwin)
+    }
+}
+
+impl std::fmt::Display for SystemType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SystemType::NixOS => write!(f, "nixos"),
+            SystemType::Darwin => write!(f, "darwin"),
+        }
+    }
+}
+
 /// A node's attribute name.
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 #[serde(transparent)]
@@ -83,6 +120,11 @@ pub struct NodeConfig {
 
     #[validate(custom(function = "validate_keys"))]
     keys: HashMap<String, Key>,
+
+    /// The type of system (nixos or darwin).
+    /// Determines how profiles are validated and activated.
+    #[serde(rename = "systemType", default)]
+    system_type: SystemType,
 }
 
 #[derive(Debug, Clone, Validate, Deserialize)]
@@ -181,11 +223,17 @@ impl NodeConfig {
         self.build_on_target = enable;
     }
 
+    /// Returns the system type (NixOS or Darwin).
+    pub fn system_type(&self) -> SystemType {
+        self.system_type
+    }
+
     pub fn to_ssh_host(&self) -> Option<Ssh> {
         self.target_host.as_ref().map(|target_host| {
             let mut host = Ssh::new(self.target_user.clone(), target_host.clone());
             host.set_privilege_escalation_command(self.privilege_escalation_command.clone());
             host.set_extra_ssh_options(self.extra_ssh_options.clone());
+            host.set_system_type(self.system_type);
 
             if let Some(target_port) = self.target_port {
                 host.set_port(target_port);

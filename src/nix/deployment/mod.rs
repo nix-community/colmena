@@ -637,7 +637,8 @@ impl Deployment {
                 }
             }
 
-            host.activate(&profile_r, arc_self.goal).await?;
+            let system_type = target.config.system_type();
+            host.activate(&profile_r, arc_self.goal, system_type).await?;
 
             job.success_with_message(arc_self.goal.success_str().to_string())?;
 
@@ -658,9 +659,11 @@ impl Deployment {
                     None
                 };
 
+                let system_type = target.config.system_type();
                 let options = RebootOptions::default()
                     .wait_for_boot(true)
-                    .new_profile(new_profile);
+                    .new_profile(new_profile)
+                    .system_type(system_type);
 
                 host.reboot(options).await?;
 

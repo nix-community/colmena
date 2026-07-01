@@ -12,8 +12,22 @@ use tokio::time::sleep;
 use super::{CopyDirection, CopyOptions, Host, RebootOptions, key_uploader};
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
-use crate::nix::{CURRENT_PROFILE, Goal, Key, Profile, SYSTEM_PROFILE, StorePath};
+use crate::nix::{
+    CURRENT_PROFILE, DARWIN_NIX_BIN_PATH, Goal, Key, Profile, SYSTEM_PROFILE, StorePath, SystemType,
+};
 use crate::util::{CommandExecution, CommandExt};
+
+/// Resolves a nix binary name to run on the remote target.
+///
+/// On darwin, root's PATH doesn't include the nix binaries, so we use an
+/// absolute path; elsewhere the bare name is resolved via the remote PATH.
+fn remote_nix_bin(system_type: SystemType, name: &str) -> String {
+    if system_type.is_darwin() {
+        format!("{DARWIN_NIX_BIN_PATH}/{name}")
+    } else {
+        name.to_string()
+    }
+}
 
 /// A remote machine connected over SSH.
 #[derive(Debug)]
@@ -39,6 +53,10 @@ pub struct Ssh {
     /// Whether to use the experimental `nix copy` command.
     use_nix3_copy: bool,
 
+    /// The system type (NixOS or Darwin).
+    /// Used to handle platform-specific differences like nix-daemon path on macOS.
+    system_type: SystemType,
+
     job: Option<JobHandle>,
 }
 
@@ -59,8 +77,9 @@ impl Host for Ssh {
     }
 
     async fn realize_remote(&mut self, derivation: &StorePath) -> ColmenaResult<Vec<StorePath>> {
+        let nix_store = remote_nix_bin(self.system_type, "nix-store");
         let command = self.ssh(&[
-            "nix-store",
+            &nix_store,
             "--no-gc-warning",
             "--realise",
             derivation.as_path().to_str().unwrap(),
@@ -90,26 +109,42 @@ impl Host for Ssh {
         Ok(())
     }
 
-    async fn activate(&mut self, profile: &Profile, goal: Goal) -> ColmenaResult<()> {
+    async fn activate(
+        &mut self,
+        profile: &Profile,
+        goal: Goal,
+        system_type: SystemType,
+    ) -> ColmenaResult<()> {
         if !goal.requires_activation() {
+            return Err(ColmenaError::Unsupported);
+        }
+
+        // Check if this goal is supported for Darwin
+        if system_type.is_darwin() && !goal.supported_on_darwin() {
             return Err(ColmenaError::Unsupported);
         }
 
         if goal.should_switch_profile() {
             let path = profile.as_path().to_str().unwrap();
-            let set_profile = self.ssh(&["nix-env", "--profile", SYSTEM_PROFILE, "--set", path]);
+            let nix_env = remote_nix_bin(system_type, "nix-env");
+            let set_profile = self.ssh(&[&nix_env, "--profile", SYSTEM_PROFILE, "--set", path]);
             self.run_command(set_profile).await?;
         }
 
-        let activation_command = profile.activation_command(goal).unwrap();
+        // Get the activation command based on system type
+        let activation_command = profile
+            .activation_command(goal, system_type)
+            .ok_or(ColmenaError::Unsupported)?;
         let v: Vec<&str> = activation_command.iter().map(|s| &**s).collect();
         let command = self.ssh(&v);
         self.run_command(command).await
     }
 
     async fn get_current_system_profile(&mut self) -> ColmenaResult<Profile> {
+        // `readlink -f` (not GNU-only `-e`) so this also works on macOS/BSD
+        // targets. CURRENT_PROFILE is always a valid symlink on a live system.
         let paths = self
-            .ssh(&["readlink", "-e", CURRENT_PROFILE])
+            .ssh(&["readlink", "-f", CURRENT_PROFILE])
             .capture_output()
             .await?;
 
@@ -124,9 +159,14 @@ impl Host for Ssh {
     }
 
     async fn get_main_system_profile(&mut self) -> ColmenaResult<Profile> {
+        // `readlink -f` for GNU/BSD portability. The `[ -e ]` guard preserves
+        // the "final target must exist" semantics of the old `readlink -e`
+        // fallback: a bare `-f` prints a non-existent path (exit 0) under GNU,
+        // which would wrongly suppress the fallback to CURRENT_PROFILE.
         let command = format!(
-            "\"readlink -e {} || readlink -e {}\"",
-            SYSTEM_PROFILE, CURRENT_PROFILE
+            "\"if [ -e {sys} ]; then readlink -f {sys}; else readlink -f {cur}; fi\"",
+            sys = SYSTEM_PROFILE,
+            cur = CURRENT_PROFILE
         );
 
         let paths = self.ssh(&["sh", "-c", &command]).capture_output().await?;
@@ -151,7 +191,8 @@ impl Host for Ssh {
             return self.initate_reboot().await;
         }
 
-        let old_id = self.get_boot_id().await?;
+        let system_type = options.system_type;
+        let old_id = self.get_boot_id(system_type).await?;
 
         self.initate_reboot().await?;
 
@@ -162,7 +203,7 @@ impl Host for Ssh {
         // Wait for node to come back up
         loop {
             // Ignore errors while waiting
-            if let Ok(new_id) = self.get_boot_id().await
+            if let Ok(new_id) = self.get_boot_id(system_type).await
                 && new_id != old_id
             {
                 break;
@@ -194,6 +235,7 @@ impl Ssh {
             privilege_escalation_command: Vec::new(),
             extra_ssh_options: Vec::new(),
             use_nix3_copy: false,
+            system_type: SystemType::default(),
             job: None,
         }
     }
@@ -216,6 +258,10 @@ impl Ssh {
 
     pub fn set_use_nix3_copy(&mut self, enable: bool) {
         self.use_nix3_copy = enable;
+    }
+
+    pub fn set_system_type(&mut self, system_type: SystemType) {
+        self.system_type = system_type;
     }
 
     pub fn upcast(self) -> Box<dyn Host> {
@@ -267,7 +313,14 @@ impl Ssh {
         let ssh_options = self.ssh_options();
         let ssh_options_str = ssh_options.join(" ");
 
-        let mut command = if self.use_nix3_copy {
+        // Darwin must use `nix copy` (ssh-ng): the legacy `nix-copy-closure`
+        // binary runs `nix-store --serve` on the remote via the plain `ssh://`
+        // store and relies on the remote PATH, which lacks nix binaries for root
+        // on macOS. It has no way to point at a remote program, whereas the
+        // ssh-ng path below already injects `remote-program=.../nix-daemon`.
+        let use_nix3_copy = self.use_nix3_copy || self.system_type.is_darwin();
+
+        let mut command = if use_nix3_copy {
             // experimental `nix copy` command with ssh-ng://
             let mut command = Command::new("nix");
 
@@ -299,10 +352,24 @@ impl Ssh {
                 }
             }
 
+            // Build the store URI with appropriate query parameters
+            // For darwin, we need to specify the remote-program because root's PATH
+            // on macOS doesn't include nix binaries by default
             let mut store_uri = format!("ssh-ng://{}", self.ssh_target());
-            if options.gzip {
-                store_uri += "?compress=true";
+            let mut query_params = Vec::new();
+
+            if self.system_type.is_darwin() {
+                query_params.push(format!("remote-program={DARWIN_NIX_BIN_PATH}/nix-daemon"));
             }
+
+            if options.gzip {
+                query_params.push("compress=true".to_string());
+            }
+
+            if !query_params.is_empty() {
+                store_uri = format!("{}?{}", store_uri, query_params.join("&"));
+            }
+
             command.arg(store_uri);
 
             command.arg(path.as_path());
@@ -395,11 +462,16 @@ impl Ssh {
     }
 
     /// Returns the current Boot ID.
-    async fn get_boot_id(&mut self) -> ColmenaResult<BootId> {
-        let boot_id = self
-            .ssh(&["cat", "/proc/sys/kernel/random/boot_id"])
-            .capture_output()
-            .await?;
+    ///
+    /// For NixOS, reads from /proc/sys/kernel/random/boot_id.
+    /// For Darwin, uses sysctl kern.bootsessionuuid.
+    async fn get_boot_id(&mut self, system_type: SystemType) -> ColmenaResult<BootId> {
+        let command = match system_type {
+            SystemType::NixOS => vec!["cat", "/proc/sys/kernel/random/boot_id"],
+            SystemType::Darwin => vec!["sysctl", "-n", "kern.bootsessionuuid"],
+        };
+
+        let boot_id = self.ssh(&command).capture_output().await?;
 
         Ok(BootId(boot_id))
     }
