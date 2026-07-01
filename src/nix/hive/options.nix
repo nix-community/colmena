@@ -213,6 +213,14 @@ with builtins; rec {
           type = types.listOf types.str;
           default = [];
         };
+        sshProto = lib.mkOption {
+          description = ''
+            The ssh protocol to use to copy the Closure to the Node.
+            Either ssh or ssh-ng
+          '';
+          type = types.enum [ "ssh" "ssh-ng"];
+          default = "ssh-ng";
+        };
       };
     };
   };

@@ -81,6 +81,9 @@ pub struct NodeConfig {
     #[serde(rename = "sshOptions")]
     extra_ssh_options: Vec<String>,
 
+    #[serde(rename = "sshProto")]
+    ssh_proto: String, // TODO: Use Enum
+
     #[validate(custom(function = "validate_keys"))]
     keys: HashMap<String, Key>,
 }
@@ -186,6 +189,7 @@ impl NodeConfig {
             let mut host = Ssh::new(self.target_user.clone(), target_host.clone());
             host.set_privilege_escalation_command(self.privilege_escalation_command.clone());
             host.set_extra_ssh_options(self.extra_ssh_options.clone());
+            host.set_ssh_proto(self.ssh_proto.clone());
 
             if let Some(target_port) = self.target_port {
                 host.set_port(target_port);
