@@ -62,8 +62,15 @@ pub struct DeployOpts {
     /// Do not use substitutes
     ///
     /// Disables the use of substituters when copying closures to the remote host.
-    #[arg(long)]
+    #[arg(long, overrides_with = "use_substitute")]
     no_substitutes: bool,
+
+    /// Use substitutes
+    ///
+    /// Enables the use of substituters when copying closures to the remote host. This flag
+    /// can be used to override the per-node `deployment.noSubstitutes` option.
+    #[arg(long, alias = "use-substitutes")]
+    use_substitute: bool,
 
     /// Do not use gzip
     ///
@@ -144,6 +151,7 @@ pub async fn run(hive: Hive, opts: Opts) -> Result<(), ColmenaError> {
                 no_keys,
                 reboot,
                 no_substitutes,
+                use_substitute,
                 no_gzip,
                 build_on_target,
                 no_build_on_target,
@@ -189,6 +197,8 @@ pub async fn run(hive: Hive, opts: Opts) -> Result<(), ColmenaError> {
 
         if no_substitutes {
             options.set_substituters_push(!no_substitutes);
+        } else if use_substitute {
+            options.set_substituters_push(use_substitute);
         }
 
         if keep_result {
