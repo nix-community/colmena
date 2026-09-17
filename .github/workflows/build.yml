@@ -25,11 +25,11 @@ jobs:
       - uses: actions/checkout@v7.0.1
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
         if: matrix.system == 'aarch64-linux'
 
       - name: Generate System Flags
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
         continue-on-error: true # Self-hosted runners already have Nix installed
 
       - name: Enable Binary Cache
