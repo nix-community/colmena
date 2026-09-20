@@ -178,6 +178,15 @@ rec {
             type = types.bool;
             default = false;
           };
+          noSubstitutes = lib.mkOption {
+            description = ''
+              Disables the use of substituters when copying closures to the
+              remote host. This option can be useful to deploy to nodes that do
+              not have an internet connection.
+            '';
+            type = types.bool;
+            default = false;
+          };
           tags = lib.mkOption {
             description = ''
               A list of tags for the node.
