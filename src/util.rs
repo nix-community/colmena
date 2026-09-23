@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use std::process::Stdio;
 
 use async_trait::async_trait;
@@ -10,7 +8,6 @@ use tokio::process::Command;
 
 use super::error::{ColmenaError, ColmenaResult};
 use super::job::JobHandle;
-use super::nix::StorePath;
 use super::nix::deployment::TargetNodeMap;
 
 const NEWLINE: u8 = 0xa;
@@ -37,10 +34,6 @@ pub trait CommandExt {
     async fn capture_json<T>(&mut self) -> ColmenaResult<T>
     where
         T: DeserializeOwned;
-
-    /// Runs the command, capturing a single store path.
-    #[allow(dead_code)]
-    async fn capture_store_path(&mut self) -> ColmenaResult<StorePath>;
 }
 
 impl CommandExecution {
@@ -150,13 +143,6 @@ impl CommandExt for Command {
             output: output.clone(),
         })
     }
-
-    /// Captures a single store path.
-    async fn capture_store_path(&mut self) -> ColmenaResult<StorePath> {
-        let output = self.capture_output().await?;
-        let path = output.trim_end().to_owned();
-        StorePath::try_from(path)
-    }
 }
 
 #[async_trait]
@@ -182,13 +168,6 @@ impl CommandExt for CommandExecution {
         serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
             output: output.clone(),
         })
-    }
-
-    /// Captures a single store path.
-    async fn capture_store_path(&mut self) -> ColmenaResult<StorePath> {
-        let output = self.capture_output().await?;
-        let path = output.trim_end().to_owned();
-        StorePath::try_from(path)
     }
 }
 
