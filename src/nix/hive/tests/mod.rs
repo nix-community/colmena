@@ -738,6 +738,33 @@ fn test_hive_get_meta() {
 }
 
 #[test]
+fn test_build_on_target_without_target_host() {
+    let TempHive { hive, _temp_file } = TempHive::new(
+        r#"
+      {
+        test = {
+          boot.isContainer = true;
+          nixpkgs.system = "x86_64-linux";
+          deployment = {
+            targetHost = null;
+            buildOnTarget = true;
+          };
+        };
+      }
+    "#,
+    );
+
+    let targets = block_on(hive.select_nodes(None, None, false)).unwrap();
+    let deployment =
+        crate::nix::deployment::Deployment::new(hive, targets, crate::nix::Goal::Build, None);
+
+    assert!(matches!(
+        block_on(deployment.execute()),
+        Err(crate::error::ColmenaError::NoTargetHost)
+    ));
+}
+
+#[test]
 fn test_remote_flags_exclude_machines_file() {
     let mut flags = NixFlags::default();
     flags.add_option("cores".to_string(), "4".to_string());
