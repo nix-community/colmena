@@ -9,9 +9,9 @@ use tokio::sync::Semaphore;
 use crate::error::ColmenaError;
 use crate::job::{JobMonitor, JobState, JobType};
 use crate::nix::Hive;
+use crate::nix::deployment::get_label_width;
 use crate::nix::node_filter::NodeFilterOpts;
 use crate::progress::SimpleProgressOutput;
-use crate::util;
 
 /// Run a command on remote machines
 #[derive(Debug, Args)]
@@ -69,7 +69,7 @@ pub async fn run(
 
     let (mut monitor, meta) = JobMonitor::new(output.get_sender());
 
-    if let Some(width) = util::get_label_width(&targets) {
+    if let Some(width) = get_label_width(&targets) {
         monitor.set_label_width(width);
     }
 

@@ -8,7 +8,6 @@ use tokio::process::Command;
 
 use super::error::{ColmenaError, ColmenaResult};
 use super::job::JobHandle;
-use super::nix::deployment::TargetNodeMap;
 
 const NEWLINE: u8 = 0xa;
 
@@ -189,10 +188,6 @@ where
     }
 
     Ok(log)
-}
-
-pub fn get_label_width(targets: &TargetNodeMap) -> Option<usize> {
-    targets.keys().map(|n| n.len()).max()
 }
 
 #[cfg(test)]

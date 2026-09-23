@@ -21,7 +21,6 @@ use tokio_stream::StreamExt;
 use super::NixFlags;
 use crate::job::{JobHandle, JobMonitor, JobState, JobType};
 use crate::progress::Sender as ProgressSender;
-use crate::util;
 
 use super::{
     ColmenaError, ColmenaResult, CopyDirection, CopyOptions, Hive, Host, NodeConfig, NodeName,
@@ -88,6 +87,11 @@ impl TargetNode {
     }
 }
 
+/// Returns the length of the longest node name, for aligning progress labels.
+pub fn get_label_width(targets: &TargetNodeMap) -> Option<usize> {
+    targets.keys().map(|n| n.len()).max()
+}
+
 impl Deployment {
     /// Creates a new deployment.
     pub fn new(
@@ -115,7 +119,7 @@ impl Deployment {
     pub async fn execute(mut self) -> ColmenaResult<()> {
         let (mut monitor, meta) = JobMonitor::new(self.progress.clone());
 
-        if let Some(width) = util::get_label_width(&self.targets) {
+        if let Some(width) = get_label_width(&self.targets) {
             monitor.set_label_width(width);
         }
 
