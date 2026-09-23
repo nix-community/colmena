@@ -1,26 +1,33 @@
 with builtins;
 {
-  assertionModule = { config, lib, ... }: {
-    assertions = lib.mapAttrsToList (
-      key: opts:
-      let
-        nonNulls = l: filter (x: x != null) l;
-      in
-      {
-        assertion =
-          length (nonNulls [
-            opts.text
-            opts.keyCommand
-            opts.keyFile
-          ]) == 1;
-        message =
-          let
-            prefix = "${name}.deployment.keys.${key}";
-          in
-          "Exactly one of `${prefix}.text`, `${prefix}.keyCommand` and `${prefix}.keyFile` must be set.";
-      }
-    ) config.deployment.keys;
-  };
+  assertionModule =
+    {
+      config,
+      lib,
+      name,
+      ...
+    }:
+    {
+      assertions = lib.mapAttrsToList (
+        key: opts:
+        let
+          nonNulls = l: filter (x: x != null) l;
+        in
+        {
+          assertion =
+            length (nonNulls [
+              opts.text
+              opts.keyCommand
+              opts.keyFile
+            ]) == 1;
+          message =
+            let
+              prefix = "${name}.deployment.keys.${key}";
+            in
+            "Exactly one of `${prefix}.text`, `${prefix}.keyCommand` and `${prefix}.keyFile` must be set.";
+        }
+      ) config.deployment.keys;
+    };
 
   # Change the ownership of all keys uploaded pre-activation
   #
