@@ -718,6 +718,59 @@ fn test_hive_introspect() {
 }
 
 #[test]
+fn test_streaming_without_eval_node_limit() {
+    let TempHive { hive, _temp_file } = TempHive::new(
+        r#"
+      {
+        test = { pkgs, ... }: {
+          boot.isContainer = true;
+          nixpkgs.system = "x86_64-linux";
+          environment.systemPackages = with pkgs; [ thisPackageDoesNotExist ];
+        };
+      }
+    "#,
+    );
+
+    let targets = block_on(hive.select_nodes(None, None, false)).unwrap();
+    let mut deployment =
+        crate::nix::deployment::Deployment::new(hive, targets, crate::nix::Goal::Build, None);
+
+    let mut options = crate::nix::deployment::Options::default();
+    options.set_evaluator(crate::nix::deployment::EvaluatorType::Streaming);
+    deployment.set_options(options);
+    deployment.set_evaluation_node_limit(crate::nix::deployment::EvaluationNodeLimit::None);
+
+    // an attribute error means nix-eval-jobs started and evaluated the node
+    assert!(matches!(
+        block_on(deployment.execute()),
+        Err(crate::error::ColmenaError::AttributeEvaluationError)
+    ));
+}
+
+#[test]
+fn test_chunked_without_eval_node_limit_or_targets() {
+    let TempHive { hive, _temp_file } = TempHive::new(
+        r#"
+      {
+        test = {
+          boot.isContainer = true;
+        };
+      }
+    "#,
+    );
+
+    let mut deployment = crate::nix::deployment::Deployment::new(
+        hive,
+        HashMap::new(),
+        crate::nix::Goal::Build,
+        None,
+    );
+    deployment.set_evaluation_node_limit(crate::nix::deployment::EvaluationNodeLimit::None);
+
+    block_on(deployment.execute()).unwrap();
+}
+
+#[test]
 fn test_hive_get_meta() {
     let hive = TempHive::new(
         r#"

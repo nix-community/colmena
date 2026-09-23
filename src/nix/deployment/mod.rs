@@ -193,10 +193,7 @@ impl Deployment {
         parent: JobHandle,
         mut targets: TargetNodeMap,
     ) -> ColmenaResult<()> {
-        let eval_limit = self
-            .evaluation_node_limit
-            .get_limit()
-            .unwrap_or(targets.len());
+        let eval_limit = self.evaluation_node_limit.get_limit(targets.len());
 
         let mut futures = Vec::new();
 
@@ -231,14 +228,11 @@ impl Deployment {
         let expr = self.hive.eval_selected_expr(&nodes)?;
 
         let job = parent.create_job(JobType::Evaluate, nodes.clone())?;
+        let eval_limit = self.evaluation_node_limit.get_limit(nodes.len());
 
         let (futures, failed_attributes) = job
             .run(|job| async move {
                 let mut evaluator = NixEvalJobs::default();
-                let eval_limit = self
-                    .evaluation_node_limit
-                    .get_limit()
-                    .unwrap_or(self.targets.len());
                 evaluator.set_eval_limit(eval_limit);
                 evaluator.set_job(job.clone());
 
