@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use std::process::Stdio;
 
 use async_trait::async_trait;
@@ -10,8 +8,6 @@ use tokio::process::Command;
 
 use super::error::{ColmenaError, ColmenaResult};
 use super::job::JobHandle;
-use super::nix::StorePath;
-use super::nix::deployment::TargetNodeMap;
 
 const NEWLINE: u8 = 0xa;
 
@@ -36,11 +32,13 @@ pub trait CommandExt {
     /// Runs the command, capturing deserialized output from JSON.
     async fn capture_json<T>(&mut self) -> ColmenaResult<T>
     where
-        T: DeserializeOwned;
-
-    /// Runs the command, capturing a single store path.
-    #[allow(dead_code)]
-    async fn capture_store_path(&mut self) -> ColmenaResult<StorePath>;
+        T: DeserializeOwned,
+    {
+        let output = self.capture_output().await?;
+        serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
+            output: output.clone(),
+        })
+    }
 }
 
 impl CommandExecution {
@@ -139,24 +137,6 @@ impl CommandExt for Command {
             Err(output.status.into())
         }
     }
-
-    /// Captures deserialized output from JSON.
-    async fn capture_json<T>(&mut self) -> ColmenaResult<T>
-    where
-        T: DeserializeOwned,
-    {
-        let output = self.capture_output().await?;
-        serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
-            output: output.clone(),
-        })
-    }
-
-    /// Captures a single store path.
-    async fn capture_store_path(&mut self) -> ColmenaResult<StorePath> {
-        let output = self.capture_output().await?;
-        let path = output.trim_end().to_owned();
-        StorePath::try_from(path)
-    }
 }
 
 #[async_trait]
@@ -171,24 +151,6 @@ impl CommandExt for CommandExecution {
         let (stdout, _) = self.get_logs();
 
         Ok(stdout.unwrap().to_owned())
-    }
-
-    /// Captures deserialized output from JSON.
-    async fn capture_json<T>(&mut self) -> ColmenaResult<T>
-    where
-        T: DeserializeOwned,
-    {
-        let output = self.capture_output().await?;
-        serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
-            output: output.clone(),
-        })
-    }
-
-    /// Captures a single store path.
-    async fn capture_store_path(&mut self) -> ColmenaResult<StorePath> {
-        let output = self.capture_output().await?;
-        let path = output.trim_end().to_owned();
-        StorePath::try_from(path)
     }
 }
 
@@ -226,10 +188,6 @@ where
     }
 
     Ok(log)
-}
-
-pub fn get_label_width(targets: &TargetNodeMap) -> Option<usize> {
-    targets.keys().map(|n| n.len()).max()
 }
 
 #[cfg(test)]

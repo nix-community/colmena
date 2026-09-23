@@ -23,6 +23,7 @@ pub trait NixExpression: Send + Sync {
 /// A serialized Nix expression.
 pub struct SerializedNixExpression(String);
 
+#[cfg(test)]
 impl NixExpression for String {
     fn expression(&self) -> String {
         self.clone()

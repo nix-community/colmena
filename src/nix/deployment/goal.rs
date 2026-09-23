@@ -1,7 +1,5 @@
 //! Deployment goals.
 
-use std::str::FromStr;
-
 /// The goal of a deployment.
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, clap::ValueEnum)]
 pub enum Goal {
@@ -26,22 +24,6 @@ pub enum Goal {
 
     /// Only upload keys.
     UploadKeys,
-}
-
-impl FromStr for Goal {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "build" => Ok(Self::Build),
-            "push" => Ok(Self::Push),
-            "switch" => Ok(Self::Switch),
-            "boot" => Ok(Self::Boot),
-            "test" => Ok(Self::Test),
-            "dry-activate" => Ok(Self::DryActivate),
-            "keys" => Ok(Self::UploadKeys),
-            _ => Err("Not one of [build, push, switch, boot, test, dry-activate, keys]."),
-        }
-    }
 }
 
 impl std::fmt::Display for Goal {

@@ -1,7 +1,7 @@
 //! Progress spinner output.
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -14,11 +14,8 @@ use crate::job::JobId;
 
 /// Progress spinner output.
 pub struct SpinnerOutput {
-    /// Job timekeeping.
+    /// Progress bars of the jobs.
     job_state: HashMap<JobId, JobState>,
-
-    /// One-off progress bars.
-    one_off_bars: Vec<(ProgressBar, LineStyle)>,
 
     /// Progress bar for the meta job.
     meta_bar: ProgressBar,
@@ -36,9 +33,6 @@ pub struct SpinnerOutput {
 
 #[derive(Clone)]
 struct JobState {
-    /// When the job started.
-    since: Instant,
-
     /// Progress bar to draw to.
     bar: ProgressBar,
 
@@ -61,7 +55,6 @@ impl SpinnerOutput {
         Self {
             multi: MultiProgress::new(),
             job_state: HashMap::new(),
-            one_off_bars: Vec::new(),
             meta_bar,
             meta_style: LineStyle::Normal,
             label_width: DEFAULT_LABEL_WIDTH,
@@ -106,23 +99,15 @@ impl SpinnerOutput {
             self.meta_bar.clone()
         } else {
             let mut state = self.get_job_state(line.job_id);
+            let bar = state.bar.clone();
 
-            if line.one_off {
-                let bar = self.create_bar(line.style);
-                state.configure_one_off(&bar);
-                self.one_off_bars.push((bar.clone(), line.style));
-                bar
-            } else {
-                let bar = state.bar.clone();
-
-                if state.style != line.style {
-                    state.style = line.style;
-                    bar.set_style(self.get_spinner_style(line.style));
-                    self.job_state.insert(line.job_id, state);
-                }
-
-                bar
+            if state.style != line.style {
+                state.style = line.style;
+                bar.set_style(self.get_spinner_style(line.style));
+                self.job_state.insert(line.job_id, state);
             }
+
+            bar
         };
 
         bar.set_prefix(line.label);
@@ -142,11 +127,6 @@ impl SpinnerOutput {
 
     /// Resets the styles of all known bars.
     fn reset_styles(&self) {
-        for (bar, style) in &self.one_off_bars {
-            let style = self.get_spinner_style(*style);
-            bar.set_style(style);
-        }
-
         for state in self.job_state.values() {
             let style = self.get_spinner_style(state.style);
             state.bar.set_style(style);
@@ -207,15 +187,9 @@ impl ProgressOutput for SpinnerOutput {
 impl JobState {
     fn new(bar: ProgressBar) -> Self {
         Self {
-            since: Instant::now(),
             bar,
             style: LineStyle::Normal,
         }
-    }
-
-    fn configure_one_off(&self, bar: &ProgressBar) {
-        bar.clone()
-            .with_elapsed(Instant::now().duration_since(self.since));
     }
 }
 

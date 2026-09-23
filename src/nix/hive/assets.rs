@@ -1,9 +1,8 @@
 //! Static files required to evaluate a Hive configuation.
 //!
-//! We embed Nix expressions (eval.nix, options.nix, modules.nix) as well as
-//! as the auto-rollback script (auto-rollback.sh) into the resulting binary
-//! to ease distribution. The files are written to a temporary path when
-//! we need to use them.
+//! We embed Nix expressions (eval.nix, options.nix, modules.nix) into the
+//! resulting binary to ease distribution. The files are written to a
+//! temporary path when we need to use them.
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -38,16 +37,16 @@ impl Assets {
     pub async fn new(hive_path: HivePath, flags: &NixFlags) -> ColmenaResult<Self> {
         let temp_dir = TempFileBuilder::new().prefix("colmena-assets-").tempdir()?;
 
-        create_file(&temp_dir, "eval.nix", false, EVAL_NIX)?;
-        create_file(&temp_dir, "options.nix", false, OPTIONS_NIX)?;
-        create_file(&temp_dir, "modules.nix", false, MODULES_NIX)?;
+        create_file(&temp_dir, "eval.nix", EVAL_NIX)?;
+        create_file(&temp_dir, "options.nix", OPTIONS_NIX)?;
+        create_file(&temp_dir, "modules.nix", MODULES_NIX)?;
 
         let mut assets_flake_uri = None;
 
         if let HivePath::Flake(hive_flake) = &hive_path {
             // Emit a temporary flake, then resolve the locked URI
             let flake_nix = FLAKE_NIX.replace("%hive%", hive_flake.locked_uri());
-            create_file(&temp_dir, "flake.nix", false, flake_nix.as_bytes())?;
+            create_file(&temp_dir, "flake.nix", flake_nix.as_bytes())?;
 
             // We explicitly specify `path:` instead of letting Nix resolve
             // automatically, which would involve checking parent directories
@@ -102,13 +101,12 @@ impl Assets {
     }
 }
 
-fn create_file(base: &TempDir, name: &str, executable: bool, contents: &[u8]) -> ColmenaResult<()> {
-    let mode = if executable { 0o700 } else { 0o600 };
+fn create_file(base: &TempDir, name: &str, contents: &[u8]) -> ColmenaResult<()> {
     let path = base.path().join(name);
     let mut f = OpenOptions::new()
         .create_new(true)
         .write(true)
-        .mode(mode)
+        .mode(0o600)
         .open(path)?;
 
     f.write_all(contents)?;

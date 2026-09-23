@@ -74,9 +74,6 @@ pub struct Line {
     /// The text.
     text: String,
 
-    /// Whether this is an one-off output.
-    one_off: bool,
-
     /// Whether this is line is noisy.
     noisy: bool,
 }
@@ -123,7 +120,6 @@ impl Line {
             style: LineStyle::Normal,
             label: String::new(),
             text,
-            one_off: false,
             noisy: false,
         }
     }
