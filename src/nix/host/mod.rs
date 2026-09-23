@@ -122,27 +122,6 @@ pub trait Host: Send + Sync + std::fmt::Debug {
         Ok(paths)
     }
 
-    /// Pushes and optionally activates a profile to the host.
-    async fn deploy(
-        &mut self,
-        profile: &Profile,
-        goal: Goal,
-        copy_options: CopyOptions,
-    ) -> ColmenaResult<()> {
-        self.copy_closure(
-            profile.as_store_path(),
-            CopyDirection::ToRemote,
-            copy_options,
-        )
-        .await?;
-
-        if goal.requires_activation() {
-            self.activate(profile, goal).await?;
-        }
-
-        Ok(())
-    }
-
     /// Uploads a set of keys to the host.
     ///
     /// If `require_ownership` is false, then the ownership of a key
@@ -169,7 +148,7 @@ pub trait Host: Send + Sync + std::fmt::Debug {
 
     /// Activates a system profile on the host, if it runs NixOS.
     ///
-    /// The profile must already exist on the host. You should probably use deploy instead.
+    /// The profile must already exist on the host.
     #[allow(unused_variables)]
     async fn activate(&mut self, profile: &Profile, goal: Goal) -> ColmenaResult<()> {
         Err(ColmenaError::Unsupported)
