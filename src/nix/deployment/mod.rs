@@ -429,7 +429,7 @@ impl Deployment {
         let job = parent.create_job(JobType::UploadKeys, nodes)?;
         job.run(|job| async move {
             if target.host.is_none() {
-                return Err(ColmenaError::Unsupported);
+                return Err(ColmenaError::NoTargetHost);
             }
 
             let host = target.host.as_mut().unwrap();
@@ -456,7 +456,7 @@ impl Deployment {
         let (target, profile) = build_job
             .run(|job| async move {
                 if target.host.is_none() {
-                    return Err(ColmenaError::Unsupported);
+                    return Err(ColmenaError::NoTargetHost);
                 }
 
                 let host = target.host.as_mut().unwrap();
@@ -540,7 +540,7 @@ impl Deployment {
         let target = push_job
             .run(|job| async move {
                 if target.host.is_none() {
-                    return Err(ColmenaError::Unsupported);
+                    return Err(ColmenaError::NoTargetHost);
                 }
 
                 let host = target.host.as_mut().unwrap();
