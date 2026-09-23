@@ -33,7 +33,13 @@ pub trait CommandExt {
     /// Runs the command, capturing deserialized output from JSON.
     async fn capture_json<T>(&mut self) -> ColmenaResult<T>
     where
-        T: DeserializeOwned;
+        T: DeserializeOwned,
+    {
+        let output = self.capture_output().await?;
+        serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
+            output: output.clone(),
+        })
+    }
 }
 
 impl CommandExecution {
@@ -132,17 +138,6 @@ impl CommandExt for Command {
             Err(output.status.into())
         }
     }
-
-    /// Captures deserialized output from JSON.
-    async fn capture_json<T>(&mut self) -> ColmenaResult<T>
-    where
-        T: DeserializeOwned,
-    {
-        let output = self.capture_output().await?;
-        serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
-            output: output.clone(),
-        })
-    }
 }
 
 #[async_trait]
@@ -157,17 +152,6 @@ impl CommandExt for CommandExecution {
         let (stdout, _) = self.get_logs();
 
         Ok(stdout.unwrap().to_owned())
-    }
-
-    /// Captures deserialized output from JSON.
-    async fn capture_json<T>(&mut self) -> ColmenaResult<T>
-    where
-        T: DeserializeOwned,
-    {
-        let output = self.capture_output().await?;
-        serde_json::from_str(&output).map_err(|_| ColmenaError::BadOutput {
-            output: output.clone(),
-        })
     }
 }
 
