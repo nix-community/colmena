@@ -64,9 +64,6 @@ pub enum ColmenaError {
     #[snafu(display("Filter rule cannot be empty"))]
     EmptyFilterRule,
 
-    #[snafu(display("Deployment already executed"))]
-    DeploymentAlreadyExecuted,
-
     #[snafu(display("Unknown error: {}", message))]
     Unknown { message: String },
 

@@ -63,9 +63,6 @@ pub struct Deployment {
 
     /// Evaluation limit.
     evaluation_node_limit: EvaluationNodeLimit,
-
-    /// Whether it was executed.
-    executed: bool,
 }
 
 /// Handle to a target node.
@@ -108,7 +105,6 @@ impl Deployment {
             targets,
             parallelism_limit: ParallelismLimit::default(),
             evaluation_node_limit: EvaluationNodeLimit::default(),
-            executed: false,
         }
     }
 
@@ -117,12 +113,6 @@ impl Deployment {
     /// If a ProgressSender is supplied, then this should be run in parallel
     /// with its `run_until_completion()` future.
     pub async fn execute(mut self) -> ColmenaResult<()> {
-        if self.executed {
-            return Err(ColmenaError::DeploymentAlreadyExecuted);
-        }
-
-        self.executed = true;
-
         let (mut monitor, meta) = JobMonitor::new(self.progress.clone());
 
         if let Some(width) = util::get_label_width(&self.targets) {
