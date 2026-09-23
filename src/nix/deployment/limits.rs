@@ -96,10 +96,10 @@ impl std::fmt::Display for EvaluationNodeLimit {
 }
 
 impl EvaluationNodeLimit {
-    /// Returns the maximum number of hosts in each evaluation.
+    /// Returns the maximum number of hosts in each evaluation of `n_nodes` hosts.
     ///
     /// The result should be cached.
-    pub fn get_limit(&self) -> Option<usize> {
+    pub fn get_limit(&self, n_nodes: usize) -> usize {
         match self {
             EvaluationNodeLimit::Heuristic => {
                 if let Ok(mem_info) = sys_info::mem_info() {
@@ -111,17 +111,26 @@ impl EvaluationNodeLimit {
 
                     let nodes = mb / EVAL_PER_HOST_MB;
 
-                    if nodes == 0 {
-                        Some(1)
-                    } else {
-                        Some(nodes as usize)
-                    }
+                    if nodes == 0 { 1 } else { nodes as usize }
                 } else {
-                    Some(10)
+                    10
                 }
             }
-            EvaluationNodeLimit::Manual(limit) => Some(*limit),
-            EvaluationNodeLimit::None => None,
+            EvaluationNodeLimit::Manual(limit) => *limit,
+            // nix-eval-jobs rejects zero workers and chunks(0) panics
+            EvaluationNodeLimit::None => n_nodes.max(1),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_limit() {
+        assert_eq!(19, EvaluationNodeLimit::None.get_limit(19));
+        assert_eq!(1, EvaluationNodeLimit::None.get_limit(0));
+        assert_eq!(4, EvaluationNodeLimit::Manual(4).get_limit(19));
     }
 }
