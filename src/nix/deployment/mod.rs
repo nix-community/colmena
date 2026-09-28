@@ -423,11 +423,7 @@ impl Deployment {
         let nodes = vec![target.name.clone()];
         let job = parent.create_job(JobType::UploadKeys, nodes)?;
         job.run(|job| async move {
-            if target.host.is_none() {
-                return Err(ColmenaError::Unsupported);
-            }
-
-            let host = target.host.as_mut().unwrap();
+            let host = target.host.as_mut().ok_or(ColmenaError::NoTargetHost)?;
             host.set_job(Some(job));
             host.upload_keys(&target.config.keys, true).await?;
 
@@ -450,11 +446,7 @@ impl Deployment {
         let build_job = parent.create_job(JobType::Build, nodes.clone())?;
         let (target, profile) = build_job
             .run(|job| async move {
-                if target.host.is_none() {
-                    return Err(ColmenaError::Unsupported);
-                }
-
-                let host = target.host.as_mut().unwrap();
+                let host = target.host.as_mut().ok_or(ColmenaError::NoTargetHost)?;
                 host.set_job(Some(job.clone()));
 
                 host.copy_closure(
@@ -534,11 +526,7 @@ impl Deployment {
         let arc_self = self.clone();
         let target = push_job
             .run(|job| async move {
-                if target.host.is_none() {
-                    return Err(ColmenaError::Unsupported);
-                }
-
-                let host = target.host.as_mut().unwrap();
+                let host = target.host.as_mut().ok_or(ColmenaError::NoTargetHost)?;
                 host.set_job(Some(job.clone()));
                 host.copy_closure(
                     push_profile.as_store_path(),

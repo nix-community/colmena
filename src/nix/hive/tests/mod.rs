@@ -2,6 +2,8 @@
 
 use super::*;
 
+use crate::error::ColmenaError;
+use crate::nix::deployment::{Deployment, Goal};
 use std::collections::HashSet;
 use std::fs;
 use std::hash::Hash;
@@ -735,6 +737,32 @@ fn test_hive_get_meta() {
     eprintln!("{:?}", eval);
 
     assert!(!eval.allow_apply_all);
+}
+
+#[test]
+fn test_build_on_target_without_target_host() {
+    let TempHive { hive, _temp_file } = TempHive::new(
+        r#"
+      {
+        test = {
+          boot.isContainer = true;
+          nixpkgs.system = "x86_64-linux";
+          deployment = {
+            targetHost = null;
+            buildOnTarget = true;
+          };
+        };
+      }
+    "#,
+    );
+
+    let targets = block_on(hive.select_nodes(None, None, false)).unwrap();
+    let deployment = Deployment::new(hive, targets, Goal::Build, None);
+
+    assert!(matches!(
+        block_on(deployment.execute()),
+        Err(ColmenaError::NoTargetHost)
+    ));
 }
 
 #[test]
