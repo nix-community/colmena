@@ -18,7 +18,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     fileset = lib.fileset.difference ./. (
       lib.fileset.unions [
         ./.github
-        ./CNAME
         ./default.nix
         ./integration-tests
         ./manual
