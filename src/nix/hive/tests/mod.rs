@@ -351,6 +351,34 @@ fn test_parse_key_file() {
 }
 
 #[test]
+fn test_key_assertion_message() {
+    let hive = TempHive::new(
+        r#"
+      {
+        test = {
+          boot.isContainer = true;
+          nixpkgs.system = "x86_64-linux";
+          deployment.keys.both = {
+            text = "secret";
+            keyFile = "/etc/passwd";
+          };
+        };
+      }
+    "#,
+    );
+
+    let expr = r#"
+      { nodes, ... }:
+        map (a: a.message) (builtins.filter (a: !a.assertion) nodes.test.config.assertions)
+    "#
+    .to_string();
+
+    let messages = block_on(hive.introspect(expr, false)).unwrap();
+
+    assert!(messages.contains("`test.deployment.keys.both.text`"));
+}
+
+#[test]
 fn test_eval_non_existent_pkg() {
     // Sanity check
     TempHive::eval_failure(
