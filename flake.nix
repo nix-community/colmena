@@ -106,7 +106,7 @@
               cargo-outdated
               clippy
               editorconfig-checker
-              nix
+              nixVersions.git
               nixfmt
               rust-analyzer
               rustfmt
