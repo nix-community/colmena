@@ -451,7 +451,20 @@ impl Hive {
 
     /// Returns the expression for a REPL session.
     pub fn get_repl_expression(&self) -> String {
-        format!("{} hive.introspect (x: x)", self.get_base_expression())
+        let expression = format!("{} hive.introspect (x: x)", self.get_base_expression());
+
+        match (self.evaluation_method, self.path()) {
+            // the base expression is a lambda for nix eval --apply, which means
+            // nix repl needs it applied to the colmenaHive output here, from the
+            // unlocked uri that nix eval reads too, so :reload refetches the flake,
+            // though nix 2.26 to 2.34 cache git work tree status until the repl exits
+            (EvaluationMethod::DirectFlakeEval, HivePath::Flake(flake)) => format!(
+                "({}) (builtins.getFlake \"{}\").outputs.colmenaHive",
+                expression,
+                flake.uri()
+            ),
+            _ => expression,
+        }
     }
 
     /// Returns the base expression from which the evaluated Hive can be used.

@@ -10,9 +10,9 @@ use std::hash::Hash;
 use std::io::Write;
 use std::iter::{FromIterator, Iterator};
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use tempfile::{Builder as TempFileBuilder, NamedTempFile};
+use tempfile::{Builder as TempFileBuilder, NamedTempFile, TempDir};
 use tokio_test::block_on;
 
 macro_rules! node {
@@ -171,9 +171,9 @@ fn test_parse_simple() {
     assert_eq!(Some("luser"), host_b.target_user.as_deref());
 }
 
-#[test]
-fn test_parse_makehive_flake() {
-    // make a copy of the flake so we can edit the colmena input
+/// Copies the makehive flake into a temporary directory with the colmena
+/// input pointed at this checkout.
+fn makehive_flake_dir() -> TempDir {
     let src_dir = PathBuf::from("./src/nix/hive/tests/makehive-flake");
     let flake_dir = TempFileBuilder::new()
         .prefix("makehive-flake-")
@@ -194,14 +194,23 @@ fn test_parse_makehive_flake() {
 
     fs::write(flake_nix, patched_flake).unwrap();
 
-    // run the test
-    let flake = block_on(Flake::from_dir(flake_dir.as_ref(), &NixFlags::default())).unwrap();
+    flake_dir
+}
+
+/// Loads the makehive flake in the given directory as a hive.
+fn makehive_flake(flake_dir: &Path) -> Hive {
+    let flake = block_on(Flake::from_dir(flake_dir, &NixFlags::default())).unwrap();
 
     let mut flags = NixFlags::default();
     flags.set_show_trace(true);
 
-    let hive_path = HivePath::Flake(flake);
-    let mut hive = block_on(Hive::new(hive_path, flags)).unwrap();
+    block_on(Hive::new(HivePath::Flake(flake), flags)).unwrap()
+}
+
+#[test]
+fn test_parse_makehive_flake() {
+    let flake_dir = makehive_flake_dir();
+    let mut hive = makehive_flake(flake_dir.path());
 
     let nodes = block_on(hive.deployment_info()).unwrap();
     assert!(set_eq(
@@ -231,6 +240,51 @@ fn test_parse_makehive_flake() {
     }
 
     drop(flake_dir);
+}
+
+#[test]
+fn test_repl_expression_flake_evaluates() {
+    let flake_dir = makehive_flake_dir();
+    let hive = makehive_flake(flake_dir.path());
+
+    let mut expr_file = TempFileBuilder::new()
+        .prefix("colmena-repl-")
+        .suffix(".nix")
+        .tempfile()
+        .unwrap();
+    expr_file
+        .write_all(hive.get_repl_expression().as_bytes())
+        .unwrap();
+
+    // nix repl is impure, and getFlake on an unlocked ref needs that
+    let mut flags = NixFlags::default();
+    flags.set_impure(true);
+
+    let node_names = || {
+        block_on(
+            NixCommand::nix(flags.clone())
+                .args(["eval", "--file"])
+                .arg(expr_file.path())
+                .args(["--apply", "s: builtins.attrNames s.nodes"])
+                .build()
+                .capture_output(),
+        )
+        .unwrap()
+    };
+
+    let output = node_names();
+    assert!(output.contains("host-a"));
+    assert!(output.contains("host-b"));
+
+    // evaluating the same file again must see an edit, which a locked uri would not
+    let flake_nix = flake_dir.path().join("flake.nix");
+    let edited = fs::read_to_string(&flake_nix).unwrap().replace(
+        "host-b = {",
+        "host-c = { boot.isContainer = true; };\n      host-b = {",
+    );
+    fs::write(&flake_nix, edited).unwrap();
+
+    assert!(node_names().contains("host-c"));
 }
 
 #[test]
