@@ -3,7 +3,7 @@
 use super::*;
 
 use crate::error::ColmenaError;
-use crate::nix::deployment::{Deployment, Goal};
+use crate::nix::deployment::{Deployment, EvaluationNodeLimit, EvaluatorType, Goal, Options};
 use std::collections::HashSet;
 use std::fs;
 use std::hash::Hash;
@@ -717,6 +717,21 @@ fn test_hive_introspect() {
     let eval = block_on(hive.introspect(expr, false)).unwrap();
 
     assert_eq!("true", eval);
+}
+
+#[test]
+fn test_eval_node_limit_none_without_targets() {
+    for evaluator in [EvaluatorType::Chunked, EvaluatorType::Streaming] {
+        let TempHive { hive, _temp_file } = TempHive::new("{ }");
+
+        let mut deployment = Deployment::new(hive, HashMap::new(), Goal::Build, None);
+        let mut options = Options::default();
+        options.set_evaluator(evaluator);
+        deployment.set_options(options);
+        deployment.set_evaluation_node_limit(EvaluationNodeLimit::None);
+
+        block_on(deployment.execute()).unwrap();
+    }
 }
 
 #[test]
