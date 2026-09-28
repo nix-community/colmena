@@ -7,6 +7,7 @@ use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use const_format::{concatcp, formatcp};
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::LevelFilter;
 
 use crate::{
     command::{self, apply::DeployOpts},
@@ -383,11 +384,14 @@ fn set_color_pref(when: &ColorWhen) {
 
 fn init_logging() {
     let colors_enabled = console::colors_enabled_stderr();
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
     tracing_subscriber::fmt()
         .with_target(false)
         .with_level(true)
         .with_writer(io::stderr)
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(filter)
         .without_time()
         .with_ansi(colors_enabled)
         .init();
