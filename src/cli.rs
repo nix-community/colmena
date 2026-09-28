@@ -270,14 +270,13 @@ async fn get_hive(opts: &Opts, flags: NixFlags) -> ColmenaResult<Hive> {
                 }
             }
 
-            if file_path.is_none() {
-                tracing::error!(
-                    "Could not find `hive.nix` or `flake.nix` in {:?} or any parent directory",
-                    std::env::current_dir()?
-                );
-            }
+            let Some(file_path) = file_path else {
+                return Err(ColmenaError::NoHiveFound {
+                    dir: std::env::current_dir()?,
+                });
+            };
 
-            HivePath::from_path(file_path.unwrap(), &flags).await?
+            HivePath::from_path(file_path, &flags).await?
         }
     };
 

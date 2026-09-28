@@ -1,6 +1,7 @@
 //! Custom error types.
 
 use std::os::unix::process::ExitStatusExt;
+use std::path::PathBuf;
 use std::process::ExitStatus;
 
 use snafu::{Backtrace, Snafu};
@@ -69,6 +70,12 @@ pub enum ColmenaError {
 
     #[snafu(display("Exec failed on {} hosts", n_hosts))]
     ExecError { n_hosts: usize },
+
+    #[snafu(display(
+        "Could not find hive.nix or flake.nix in {} or any parent directory",
+        dir.display()
+    ))]
+    NoHiveFound { dir: PathBuf },
 }
 
 impl From<std::io::Error> for ColmenaError {
