@@ -14,18 +14,6 @@ pub type ProfileDerivation = StoreDerivation<Profile>;
 pub struct Profile(StorePath);
 
 impl Profile {
-    pub fn from_store_path(path: StorePath) -> ColmenaResult<Self> {
-        if !path.is_dir() || !path.join("bin/switch-to-configuration").exists() {
-            return Err(ColmenaError::InvalidProfile);
-        }
-
-        if path.to_str().is_none() {
-            Err(ColmenaError::InvalidProfile)
-        } else {
-            Ok(Self(path))
-        }
-    }
-
     /// Returns the `nix-env --set` command that makes this the system profile.
     pub fn switch_profile_command(&self, flags: &NixFlags) -> NixCommand {
         NixCommand::nix_env(flags.clone())

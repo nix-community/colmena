@@ -1,5 +1,4 @@
 use std::convert::{TryFrom, TryInto};
-use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -78,12 +77,6 @@ impl TryFrom<String> for StorePath {
     }
 }
 
-impl From<StorePath> for PathBuf {
-    fn from(sp: StorePath) -> Self {
-        sp.0
-    }
-}
-
 impl<T: TryFrom<BuildResult<T>>> Clone for StoreDerivation<T> {
     fn clone(&self) -> Self {
         Self {
@@ -128,12 +121,6 @@ impl<T: TryFrom<BuildResult<T>, Error = ColmenaError>> StoreDerivation<T> {
             _derivation: PhantomData,
         };
         result.try_into()
-    }
-}
-
-impl<T: TryFrom<BuildResult<T>>> fmt::Display for StoreDerivation<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.path)
     }
 }
 
