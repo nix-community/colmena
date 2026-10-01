@@ -57,7 +57,7 @@ impl NixExe {
                 impure: true,
                 features: &["nix-command", "flakes"],
             },
-            // only builtins.getFlake needs flakes, call sites enable it per hive
+            // only nix-eval-jobs --flake needs flakes, its call site enables it per hive
             Self::NixInstantiate | Self::NixEvalJobs(_) => Caps {
                 impure: true,
                 features: &[],
