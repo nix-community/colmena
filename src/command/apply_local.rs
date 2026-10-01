@@ -22,7 +22,7 @@ pub struct Opts {
     #[arg(value_name = "GOAL", default_value_t)]
     goal: Goal,
 
-    /// Attempt to escalate privileges if not run as root
+    /// Escalate privileges with deployment.privilegeEscalationCommand if not run as root
     #[arg(long)]
     sudo: bool,
 
@@ -42,10 +42,6 @@ pub struct Opts {
     /// Override the node name to use
     #[arg(long)]
     node: Option<String>,
-
-    /// Removed: Configure deployment.privilegeEscalationCommand in node configuration
-    #[arg(long, value_name = "COMMAND", hide = true)]
-    sudo_command: Option<String>,
 }
 
 pub async fn run(
@@ -56,16 +52,8 @@ pub async fn run(
         verbose,
         no_keys,
         node,
-        sudo_command,
     }: Opts,
 ) -> Result<(), ColmenaError> {
-    if sudo_command.is_some() {
-        tracing::error!(
-            "--sudo-command has been removed. Please configure it in deployment.privilegeEscalationCommand in the node configuration."
-        );
-        quit::with_code(1);
-    }
-
     // Sanity check: Are we running NixOS?
     if let Ok(os_release) = fs::read_to_string("/etc/os-release").await {
         let re = Regex::new(r#"ID="?nixos"?"#).unwrap();
