@@ -287,6 +287,98 @@ fn test_repl_expression_flake_evaluates() {
     assert!(node_names().contains("host-c"));
 }
 
+/// Returns an expression for a derivation no earlier run has written.
+fn fresh_derivation(name: &str) -> String {
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+
+    format!(
+        r#"derivation {{ name = "colmena-test-{name}-{nonce}"; builder = "/bin/sh"; system = "x86_64-linux"; }}"#
+    )
+}
+
+#[test]
+fn test_introspect_instantiate_flake() {
+    let flake_dir = makehive_flake_dir();
+    let hive = makehive_flake(flake_dir.path());
+
+    let expr = format!("{{ ... }}: {}", fresh_derivation("flake"));
+    let output = block_on(hive.introspect(expr, true)).unwrap();
+
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(1, lines.len());
+    assert!(lines[0].ends_with(".drv"));
+    assert!(Path::new(lines[0]).exists());
+    assert!(output.ends_with('\n'));
+}
+
+#[test]
+fn test_drv_paths_snippet() {
+    // fake derivations, nothing is instantiated
+    let eval = |fixture: &str| {
+        block_on(
+            NixCommand::nix(NixFlags::default())
+                .args(["eval", "--json", "--expr"])
+                .arg(format!(
+                    r#"{} (let fakeDrv = name: {{ type = "derivation"; drvPath = "/nix/store/${{name}}.drv"; outputName = "out"; }}; in {})"#,
+                    DRV_PATHS_SNIPPET, fixture
+                ))
+                .build()
+                .capture_output(),
+        )
+        .unwrap()
+    };
+
+    let set = r#"{
+      a = fakeDrv "a";
+      b = "str";
+      c = { recurseForDerivations = true; d = fakeDrv "d"; };
+      e = { f = fakeDrv "f"; };
+      g = (fakeDrv "g") // { outputName = "bin"; };
+      "x.y" = fakeDrv "xy";
+    }"#;
+    assert_eq!(
+        r#"["/nix/store/a.drv","/nix/store/d.drv","/nix/store/g.drv!bin","/nix/store/xy.drv"]"#,
+        eval(set).trim()
+    );
+
+    let list = r#"[ (fakeDrv "a") [ (fakeDrv "b") ] { c = fakeDrv "c"; } ]"#;
+    assert_eq!(
+        r#"["/nix/store/a.drv","/nix/store/b.drv","/nix/store/c.drv"]"#,
+        eval(list).trim()
+    );
+
+    // the bindings of the snippet stay out of the scope of the value
+    let scope = r#"with { drvPath = fakeDrv "w"; }; drvPath"#;
+    assert_eq!(r#"["/nix/store/w.drv"]"#, eval(scope).trim());
+
+    // lix prints the context of an error only with --show-trace
+    let mut flags = NixFlags::default();
+    flags.set_show_trace(true);
+
+    let error = |fixture: &str| {
+        let mut command = NixCommand::nix(flags.clone())
+            .args(["eval", "--expr"])
+            .arg(format!("{} ({})", DRV_PATHS_SNIPPET, fixture))
+            .build();
+        let output = block_on(async { command.output().await }).unwrap();
+
+        assert!(!output.status.success());
+        String::from_utf8(output.stderr).unwrap()
+    };
+
+    // a set with __functor throws like a function, where nix-instantiate
+    // would call it
+    let functor = "{ __functor = self: x: x; }";
+    assert!(error(functor).contains("The expression must evaluate to a derivation"));
+
+    // an error names the attribute it comes from
+    let attribute = r#"{ a = throw "boom"; }"#;
+    assert!(error(attribute).contains("while evaluating the attribute 'a'"));
+}
+
 #[test]
 fn test_parse_node_references() {
     TempHive::valid(
@@ -746,6 +838,31 @@ fn test_hive_autocall() {
       }
     "#,
     );
+}
+
+#[test]
+fn test_hive_introspect_instantiate() {
+    let hive = TempHive::new(
+        r#"
+      {
+        test = { ... }: {
+          boot.isContainer = true;
+        };
+      }
+    "#,
+    );
+
+    // the same derivation twice prints one path
+    let expr = format!(
+        "{{ ... }}: let drv = {}; in [ drv drv ]",
+        fresh_derivation("hive")
+    );
+    let output = block_on(hive.introspect(expr, true)).unwrap();
+
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(1, lines.len());
+    assert!(lines[0].ends_with(".drv"));
+    assert!(Path::new(lines[0]).exists());
 }
 
 #[test]
