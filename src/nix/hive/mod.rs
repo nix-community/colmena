@@ -8,6 +8,7 @@ use std::convert::AsRef;
 use std::path::{Path, PathBuf};
 
 use const_format::formatcp;
+use itertools::Itertools;
 use tokio::process::Command;
 use tokio::sync::OnceCell;
 use validator::Validate;
@@ -36,6 +37,34 @@ const FLAKE_APPLY_SNIPPET: &str = formatcp!(
 ''); "#,
     HIVE_SCHEMA
 );
+
+/// The snippet mapping a value to the paths of the derivations in it.
+///
+/// It follows `nix-instantiate`: the value and each list element throw
+/// unless they are a derivation, a list or a set, an attribute is skipped
+/// unless it is a derivation or a set with `recurseForDerivations = true`,
+/// and an output other than `out` is printed as `<drvPath>!<outputName>`.
+/// Unlike `nix-instantiate`, it keeps attributes whose names fall outside
+/// `[A-Za-z_][A-Za-z0-9_+-]*`, such as a node named `web.example.com`,
+/// and calls no function, so a function or a set with `__functor` that is
+/// not a derivation throws at the top level or in a list. Forcing
+/// `drvPath` writes the derivation to the store under `nix eval` and
+/// under `nix-instantiate --eval --read-write-mode` alike.
+const DRV_PATHS_SNIPPET: &str = r#"(let
+  drvPath = v: v.drvPath + (if v.outputName or "out" != "out" then "!" + v.outputName else "");
+  isDrv = v: (v.type or null) == "derivation";
+  inSet = v:
+    if isDrv v then [ (drvPath v) ]
+    else if builtins.isAttrs v && v.recurseForDerivations or false then inAttrs v
+    else [ ];
+  inAttrs = v: builtins.concatMap (n: builtins.addErrorContext "while evaluating the attribute '${n}'" (inSet v.${n})) (builtins.attrNames v);
+  inList = v: builtins.concatMap (e: if isDrv e then [ (drvPath e) ] else toDrvPaths e) v;
+  toDrvPaths = v:
+    if isDrv v then [ (drvPath v) ]
+    else if builtins.isAttrs v && !(v ? __functor) then inAttrs v
+    else if builtins.isList v then inList v
+    else throw "The expression must evaluate to a derivation, or a list or attribute set of derivations";
+in toDrvPaths)"#;
 
 #[derive(Debug, Clone)]
 pub enum HivePath {
@@ -433,12 +462,23 @@ impl Hive {
     /// Evaluates an expression using values from the configuration.
     pub async fn introspect(&self, expression: String, instantiate: bool) -> ColmenaResult<String> {
         if instantiate {
-            let expression = format!("hive.introspect ({})", expression);
-            self.nix_instantiate(&expression)
-                .instantiate_with_builders()
+            // the eval command of both hive kinds instantiates the
+            // derivations whose drvPath it forces
+            let expression = format!("{} (hive.introspect ({}))", DRV_PATHS_SNIPPET, expression);
+            let paths: Vec<String> = self
+                .nix_instantiate(&expression)
+                .eval_with_builders()
                 .await?
-                .capture_output()
-                .await
+                .capture_json()
+                .await?;
+
+            // one path per line as nix-instantiate prints them, each path
+            // once, whereas nix-instantiate skips only a value it has printed
+            Ok(paths
+                .into_iter()
+                .unique()
+                .map(|path| format!("{}\n", path))
+                .collect())
         } else {
             let expression = format!("toJSON (hive.introspect ({}))", expression);
             self.nix_instantiate(&expression)
@@ -451,7 +491,20 @@ impl Hive {
 
     /// Returns the expression for a REPL session.
     pub fn get_repl_expression(&self) -> String {
-        format!("{} hive.introspect (x: x)", self.get_base_expression())
+        let expression = format!("{} hive.introspect (x: x)", self.get_base_expression());
+
+        match (self.evaluation_method, self.path()) {
+            // the base expression is a lambda for nix eval --apply, which means
+            // nix repl needs it applied to the colmenaHive output here, from the
+            // unlocked uri that nix eval reads too, so :reload refetches the flake,
+            // though nix 2.26 to 2.34 cache git work tree status until the repl exits
+            (EvaluationMethod::DirectFlakeEval, HivePath::Flake(flake)) => format!(
+                "({}) (builtins.getFlake \"{}\").outputs.colmenaHive",
+                expression,
+                flake.uri()
+            ),
+            _ => expression,
+        }
     }
 
     /// Returns the base expression from which the evaluated Hive can be used.
@@ -490,40 +543,31 @@ impl<'hive> NixInstantiate<'hive> {
         Self { hive, expression }
     }
 
-    fn instantiate(&self, flags: NixFlags) -> NixCommand {
-        // TODO: Better error handling
-        if self.hive.evaluation_method == EvaluationMethod::DirectFlakeEval {
-            panic!("Instantiation is not supported with DirectFlakeEval");
-        }
-
+    fn eval_command(&self, flags: NixFlags) -> NixCommand {
         let mut full_expression = self.hive.get_base_expression();
         full_expression += &self.expression;
 
-        let mut command = NixCommand::nix_instantiate(flags);
-
-        if self.hive.is_flake() {
-            command = command.extra_features(&["flakes"]);
-        }
-
-        command.args(["--no-gc-warning", "-E"]).arg(full_expression)
-    }
-
-    fn eval_command(&self, flags: NixFlags) -> NixCommand {
         match self.hive.evaluation_method {
-            EvaluationMethod::NixInstantiate => self
-                .instantiate(flags)
-                .args(["--eval", "--json", "--strict"])
-                // --read-write-mode instantiates the derivations
-                // needed for the system profile and IFD
-                .arg("--read-write-mode"),
+            EvaluationMethod::NixInstantiate => {
+                let mut command = NixCommand::nix_instantiate(flags);
+
+                if self.hive.is_flake() {
+                    command = command.extra_features(&["flakes"]);
+                }
+
+                command
+                    .arg("-E")
+                    .arg(full_expression)
+                    .args(["--eval", "--json", "--strict"])
+                    // --read-write-mode instantiates the derivations needed
+                    // for the system profile, IFD and eval --instantiate
+                    .arg("--read-write-mode")
+            }
             EvaluationMethod::DirectFlakeEval => {
                 let hive_installable = self
                     .hive
                     .flake_installable()
                     .expect("DirectFlakeEval only supports flakes");
-
-                let mut full_expression = self.hive.get_base_expression();
-                full_expression += &self.expression;
 
                 NixCommand::nix(flags)
                     .arg("eval") // nix eval
@@ -537,11 +581,6 @@ impl<'hive> NixInstantiate<'hive> {
     fn eval(self) -> Command {
         let flags = self.hive.nix_flags();
         self.eval_command(flags).build()
-    }
-
-    async fn instantiate_with_builders(self) -> ColmenaResult<Command> {
-        let flags = self.hive.nix_flags_with_builders().await?;
-        Ok(self.instantiate(flags).build())
     }
 
     async fn eval_with_builders(self) -> ColmenaResult<Command> {

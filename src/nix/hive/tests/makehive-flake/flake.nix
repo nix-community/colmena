@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.follows = "colmena/nixpkgs";
     colmena.url = "git+file://@repoPath@";
   };
   outputs = { nixpkgs, colmena, ... }: {
