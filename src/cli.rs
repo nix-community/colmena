@@ -270,14 +270,13 @@ async fn get_hive(opts: &Opts, flags: NixFlags) -> ColmenaResult<Hive> {
                 }
             }
 
-            if file_path.is_none() {
-                tracing::error!(
-                    "Could not find `hive.nix` or `flake.nix` in {:?} or any parent directory",
-                    std::env::current_dir()?
-                );
-            }
+            let Some(file_path) = file_path else {
+                return Err(ColmenaError::NoHiveFound {
+                    dir: std::env::current_dir()?,
+                });
+            };
 
-            HivePath::from_path(file_path.unwrap(), &flags).await?
+            HivePath::from_path(file_path, &flags).await?
         }
     };
 
@@ -328,7 +327,15 @@ pub async fn run() {
 
     let flags = get_nix_flags(&opts);
 
-    let hive = match get_hive(&opts, flags.clone()).await {
+    use crate::troubleshooter::run_wrapped as r;
+
+    // nix-info does not read the hive
+    if let Command::NixInfo = opts.command {
+        r(command::nix_info::run(flags)).await;
+        return;
+    }
+
+    let hive = match get_hive(&opts, flags).await {
         Ok(hive) => hive,
         Err(error) => {
             tracing::error!("Failed to load the hive: {}", error);
@@ -336,15 +343,12 @@ pub async fn run() {
         }
     };
 
-    use crate::troubleshooter::run_wrapped as r;
-
     match opts.command {
         Command::Apply(args) => r(command::apply::run(hive, args)).await,
         #[cfg(target_os = "linux")]
         Command::ApplyLocal(args) => r(command::apply_local::run(hive, args)).await,
         Command::Eval(args) => r(command::eval::run(hive, args)).await,
         Command::Exec(args) => r(command::exec::run(hive, args)).await,
-        Command::NixInfo => r(command::nix_info::run(flags)).await,
         Command::Repl => r(command::repl::run(hive)).await,
         #[cfg(debug_assertions)]
         Command::TestProgress => r(command::test_progress::run()).await,
@@ -362,7 +366,7 @@ pub async fn run() {
             };
             r(command::apply::run(hive, args)).await
         }
-        Command::GenCompletions { .. } => unreachable!(),
+        Command::NixInfo | Command::GenCompletions { .. } => unreachable!(),
     }
 }
 
