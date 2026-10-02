@@ -66,11 +66,11 @@ const DRV_PATHS_SNIPPET: &str = r#"(let
     else throw "The expression must evaluate to a derivation, or a list or attribute set of derivations";
 in toDrvPaths)"#;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HivePath {
     /// A Nix Flake.
     ///
-    /// The flake must contain the `colmena` output.
+    /// The flake must expose a top-level `colmenaHive` output.
     Flake(Flake),
 
     /// A regular .nix file
@@ -96,33 +96,10 @@ impl HivePath {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum EvaluationMethod {
-    /// Use nix-instantiate and specify the entire Nix expression.
-    ///
-    /// This is the default method for non-flake configs. It's also used
-    /// used for flakes with --legacy-flake-eval.
-    ///
-    /// For flakes, we use `builtins.getFlakes`. Pure evaluation no longer works
-    /// with this method in Nix 2.21+.
-    NixInstantiate,
-
-    /// Use `nix eval --apply` on top of a flake.
-    ///
-    /// This is the default method for flakes.
-    ///
-    /// In this method, we can no longer pull in our bundled assets and
-    /// the flake must expose a compatible `colmenaHive` output.
-    DirectFlakeEval,
-}
-
 #[derive(Debug)]
 pub struct Hive {
     /// Path to the hive.
     path: HivePath,
-
-    /// Method to evaluate the hive with.
-    evaluation_method: EvaluationMethod,
 
     /// Path to the context directory.
     ///
@@ -130,8 +107,12 @@ pub struct Hive {
     /// or "flake.nix".
     context_dir: Option<PathBuf>,
 
-    /// Static files required to evaluate a Hive configuration.
-    assets: Assets,
+    /// Static files required to evaluate a `hive.nix`, kept until the hive
+    /// is dropped. A flake needs none.
+    _assets: Option<Assets>,
+
+    /// The expression from which the evaluated hive can be used.
+    base_expression: String,
 
     /// Nix flags from the command line.
     flags: NixFlags,
@@ -178,22 +159,22 @@ impl HivePath {
 }
 
 impl Hive {
-    pub async fn new(path: HivePath, flags: NixFlags) -> ColmenaResult<Self> {
+    pub fn new(path: HivePath, flags: NixFlags) -> ColmenaResult<Self> {
         let context_dir = path.context_dir();
-        // TODO: Skip asset extraction for direct flake eval
-        let assets = Assets::new(path.clone(), &flags).await?;
-
-        let evaluation_method = if path.is_flake() {
-            EvaluationMethod::DirectFlakeEval
-        } else {
-            EvaluationMethod::NixInstantiate
+        let (assets, base_expression) = match &path {
+            HivePath::Legacy(hive_nix) => {
+                let assets = Assets::new()?;
+                let base_expression = assets.get_base_expression(hive_nix);
+                (Some(assets), base_expression)
+            }
+            HivePath::Flake(_) => (None, FLAKE_APPLY_SNIPPET.to_string()),
         };
 
         Ok(Self {
             path,
-            evaluation_method,
             context_dir,
-            assets,
+            _assets: assets,
+            base_expression,
             flags,
             meta_config: OnceCell::new(),
         })
@@ -212,14 +193,6 @@ impl Hive {
                     .await
             })
             .await
-    }
-
-    pub fn set_evaluation_method(&mut self, method: EvaluationMethod) {
-        if !self.is_flake() && method == EvaluationMethod::DirectFlakeEval {
-            return;
-        }
-
-        self.evaluation_method = method;
     }
 
     /// Returns the flags from the command line, without the evaluation
@@ -493,40 +466,33 @@ impl Hive {
     pub fn get_repl_expression(&self) -> String {
         let expression = format!("{} hive.introspect (x: x)", self.get_base_expression());
 
-        match (self.evaluation_method, self.path()) {
+        match self.path() {
+            HivePath::Legacy(_) => expression,
             // the base expression is a lambda for nix eval --apply, which means
             // nix repl needs it applied to the colmenaHive output here, from the
             // unlocked uri that nix eval reads too, so :reload refetches the flake,
             // though nix 2.26 to 2.34 cache git work tree status until the repl exits
-            (EvaluationMethod::DirectFlakeEval, HivePath::Flake(flake)) => format!(
+            HivePath::Flake(flake) => format!(
                 "({}) (builtins.getFlake \"{}\").outputs.colmenaHive",
                 expression,
                 flake.uri()
             ),
-            _ => expression,
         }
     }
 
     /// Returns the base expression from which the evaluated Hive can be used.
+    ///
+    /// A `hive.nix` is evaluated by the bundled assets. A flake carries its
+    /// evaluated hive in the `colmenaHive` output, which the expression
+    /// receives as its argument from `nix eval --apply`,
+    /// `nix-eval-jobs --select` or the repl expression.
     fn get_base_expression(&self) -> String {
-        match self.evaluation_method {
-            EvaluationMethod::NixInstantiate => self.assets.get_base_expression(),
-            EvaluationMethod::DirectFlakeEval => FLAKE_APPLY_SNIPPET.to_string(),
-        }
+        self.base_expression.clone()
     }
 
     /// Returns whether this Hive is a flake.
     fn is_flake(&self) -> bool {
         matches!(self.path(), HivePath::Flake(_))
-    }
-
-    /// Returns the full `colmenaHive` acceesor or `None` if not a flake.
-    fn flake_installable(&self) -> Option<String> {
-        if let HivePath::Flake(flake) = self.path() {
-            Some(format!("{}#colmenaHive", flake.uri()))
-        } else {
-            None
-        }
     }
 
     fn nix_instantiate(&self, expression: &str) -> NixInstantiate<'_> {
@@ -547,34 +513,19 @@ impl<'hive> NixInstantiate<'hive> {
         let mut full_expression = self.hive.get_base_expression();
         full_expression += &self.expression;
 
-        match self.hive.evaluation_method {
-            EvaluationMethod::NixInstantiate => {
-                let mut command = NixCommand::nix_instantiate(flags);
-
-                if self.hive.is_flake() {
-                    command = command.extra_features(&["flakes"]);
-                }
-
-                command
-                    .arg("-E")
-                    .arg(full_expression)
-                    .args(["--eval", "--json", "--strict"])
-                    // --read-write-mode instantiates the derivations needed
-                    // for the system profile, IFD and eval --instantiate
-                    .arg("--read-write-mode")
-            }
-            EvaluationMethod::DirectFlakeEval => {
-                let hive_installable = self
-                    .hive
-                    .flake_installable()
-                    .expect("DirectFlakeEval only supports flakes");
-
-                NixCommand::nix(flags)
-                    .arg("eval") // nix eval
-                    .arg(hive_installable)
-                    .args(["--json", "--apply"])
-                    .arg(full_expression)
-            }
+        match self.hive.path() {
+            HivePath::Legacy(_) => NixCommand::nix_instantiate(flags)
+                .arg("-E")
+                .arg(full_expression)
+                .args(["--eval", "--json", "--strict"])
+                // --read-write-mode instantiates the derivations needed
+                // for the system profile, IFD and eval --instantiate
+                .arg("--read-write-mode"),
+            HivePath::Flake(flake) => NixCommand::nix(flags)
+                .arg("eval") // nix eval
+                .arg(flake_installable(flake))
+                .args(["--json", "--apply"])
+                .arg(full_expression),
         }
     }
 
@@ -599,17 +550,14 @@ impl NixExpression for EvalSelectedExpression<'_> {
     }
 
     fn installable(&self) -> Option<String> {
-        match self.hive.evaluation_method {
-            EvaluationMethod::NixInstantiate => None,
-            EvaluationMethod::DirectFlakeEval => Some(
-                self.hive
-                    .flake_installable()
-                    .expect("DirectFlakeEval only supports flakes"),
-            ),
+        match self.hive.path() {
+            HivePath::Legacy(_) => None,
+            HivePath::Flake(flake) => Some(flake_installable(flake)),
         }
     }
+}
 
-    fn requires_flakes(&self) -> bool {
-        self.hive.is_flake()
-    }
+/// Returns the full `colmenaHive` accessor of a flake.
+fn flake_installable(flake: &Flake) -> String {
+    format!("{}#colmenaHive", flake.uri())
 }
