@@ -181,12 +181,15 @@ pub async fn run(hive: Hive, opts: Opts) -> Result<(), ColmenaError> {
     // FIXME: Configure limits
     let options = {
         let mut options = Options::default();
-        options.set_substituters_push(!no_substitute);
         options.set_gzip(!no_gzip);
         options.set_upload_keys(!no_keys);
         options.set_reboot(reboot);
         options.set_force_replace_unknown_profiles(force_replace_unknown_profiles);
         options.set_evaluator(evaluator);
+
+        if no_substitute {
+            options.set_substituters_push(!no_substitute);
+        }
 
         if keep_result {
             options.set_create_gc_roots(true);
