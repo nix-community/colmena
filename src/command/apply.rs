@@ -62,8 +62,8 @@ pub struct DeployOpts {
     /// Do not use substitutes
     ///
     /// Disables the use of substituters when copying closures to the remote host.
-    #[arg(long, alias = "no-substitutes")]
-    no_substitute: bool,
+    #[arg(long)]
+    no_substitutes: bool,
 
     /// Do not use gzip
     ///
@@ -143,7 +143,7 @@ pub async fn run(hive: Hive, opts: Opts) -> Result<(), ColmenaError> {
                 verbose,
                 no_keys,
                 reboot,
-                no_substitute,
+                no_substitutes,
                 no_gzip,
                 build_on_target,
                 no_build_on_target,
@@ -187,8 +187,8 @@ pub async fn run(hive: Hive, opts: Opts) -> Result<(), ColmenaError> {
         options.set_force_replace_unknown_profiles(force_replace_unknown_profiles);
         options.set_evaluator(evaluator);
 
-        if no_substitute {
-            options.set_substituters_push(!no_substitute);
+        if no_substitutes {
+            options.set_substituters_push(!no_substitutes);
         }
 
         if keep_result {
