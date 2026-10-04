@@ -292,13 +292,16 @@ impl Ssh {
             let mut command =
                 NixCommand::nix(self.nix_flags.clone()).args(["copy", "--no-check-sigs"]);
 
-            if options.use_substitutes {
-                command = command.args([
-                    "--substitute-on-destination",
-                    // needed due to UX bug in ssh-ng://
-                    "--builders-use-substitutes",
-                ]);
-            }
+            match options.use_substitutes {
+                None | Some(true) => {
+                    command = command.args([
+                        "--substitute-on-destination",
+                        // needed due to UX bug in ssh-ng://
+                        "--builders-use-substitutes",
+                    ]);
+                }
+                Some(false) => {}
+            };
 
             if let Some("drv") = path.extension().and_then(OsStr::to_str) {
                 command = command.arg("--derivation");
@@ -328,9 +331,14 @@ impl Ssh {
             if options.include_outputs {
                 command = command.arg("--include-outputs");
             }
-            if options.use_substitutes {
-                command = command.arg("--use-substitutes");
-            }
+
+            match options.use_substitutes {
+                None | Some(true) => {
+                    command = command.arg("--use-substitutes");
+                }
+                Some(false) => {}
+            };
+
             if options.gzip {
                 command = command.arg("--gzip");
             }
