@@ -109,3 +109,10 @@ with subtest("Check that our Nix store test is actually working"):
 with subtest("Check that we can build nodes with dots in their names"):
     deployer.succeed("cd /tmp/bundle &&" \
         f"{colmena} build --evaluator {evaluator} --eval-node-limit 4 --on gamma.tld")
+
+with subtest("Check that a failing key command keeps the existing key"):
+    deployer.succeed("sed -i 's/\"hostname\"/\"false\"/' /tmp/bundle/hive.nix")
+    deployer.fail("cd /tmp/bundle &&" \
+        f"{colmena} upload-keys --evaluator {evaluator} --on alpha")
+
+    alpha.succeed("grep deployer /tmp/another-key-dir/key-command")
