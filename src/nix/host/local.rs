@@ -169,8 +169,7 @@ impl Local {
         command.stderr(Stdio::piped());
         command.stdout(Stdio::piped());
 
-        let uploader = command.spawn()?;
-        key_uploader::feed_uploader(uploader, key, self.job.clone()).await
+        key_uploader::feed_uploader(command, key, self.job.clone()).await
     }
 
     /// Constructs a command with privilege escalation.

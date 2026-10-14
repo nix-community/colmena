@@ -10,7 +10,7 @@ use std::path::Path;
 use futures::future::join3;
 use shell_escape::unix::escape;
 use tokio::io::{AsyncWriteExt, BufReader};
-use tokio::process::Child;
+use tokio::process::Command;
 
 use crate::error::{ColmenaError, ColmenaResult};
 use crate::job::JobHandle;
@@ -41,7 +41,7 @@ pub fn generate_script<'a>(
 }
 
 pub async fn feed_uploader(
-    mut uploader: Child,
+    mut uploader: Command,
     key: &Key,
     job: Option<JobHandle>,
 ) -> ColmenaResult<()> {
@@ -49,6 +49,10 @@ pub async fn feed_uploader(
         name: key.name().to_owned(),
         error,
     })?;
+
+    // Start the uploader only once the key is ready. If the uploader got EOF
+    // instead, it would replace the key on the target with an empty file.
+    let mut uploader = uploader.spawn()?;
     let mut stdin = uploader.stdin.take().unwrap();
 
     tokio::io::copy(reader.as_mut(), &mut stdin).await?;
