@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::process::Stdio;
 
 use async_trait::async_trait;
 use tokio::process::Command;
@@ -164,11 +163,7 @@ impl Local {
             key_uploader::generate_script(key, path, require_ownership)
         );
 
-        let mut command = self.make_privileged_command(&["sh", "-c", &key_script]);
-        command.stdin(Stdio::piped());
-        command.stderr(Stdio::piped());
-        command.stdout(Stdio::piped());
-
+        let command = self.make_privileged_command(&["sh", "-c", &key_script]);
         key_uploader::feed_uploader(command, key, self.job.clone()).await
     }
 

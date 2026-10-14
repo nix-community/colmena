@@ -6,10 +6,11 @@
 
 use std::borrow::Cow;
 use std::path::Path;
+use std::process::Stdio;
 
 use futures::future::join3;
 use shell_escape::unix::escape;
-use tokio::io::{AsyncWriteExt, BufReader};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
 use crate::error::{ColmenaError, ColmenaResult};
@@ -45,17 +46,26 @@ pub async fn feed_uploader(
     key: &Key,
     job: Option<JobHandle>,
 ) -> ColmenaResult<()> {
-    let mut reader = key.reader().await.map_err(|error| ColmenaError::KeyError {
+    // Read the whole key before we start the uploader. If the uploader got
+    // EOF early, it would replace the key on the target with an empty file.
+    let mut content = Vec::new();
+    let read = async {
+        key.reader().await?.read_to_end(&mut content).await?;
+        Ok(())
+    };
+    read.await.map_err(|error| ColmenaError::KeyError {
         name: key.name().to_owned(),
         error,
     })?;
 
-    // Start the uploader only once the key is ready. If the uploader got EOF
-    // instead, it would replace the key on the target with an empty file.
-    let mut uploader = uploader.spawn()?;
+    let mut uploader = uploader
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
     let mut stdin = uploader.stdin.take().unwrap();
 
-    tokio::io::copy(reader.as_mut(), &mut stdin).await?;
+    stdin.write_all(&content).await?;
     stdin.flush().await?;
     drop(stdin);
 
