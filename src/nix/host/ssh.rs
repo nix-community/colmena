@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process::Stdio;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -395,14 +394,8 @@ impl Ssh {
         let path = key.path();
         let key_script = key_uploader::generate_script(key, path, require_ownership);
 
-        let mut command = self.ssh(&["sh", "-c", key_script.as_ref()]);
-
-        command.stdin(Stdio::piped());
-        command.stderr(Stdio::piped());
-        command.stdout(Stdio::piped());
-
-        let uploader = command.spawn()?;
-        key_uploader::feed_uploader(uploader, key, self.job.clone()).await
+        let command = self.ssh(&["sh", "-c", key_script.as_ref()]);
+        key_uploader::feed_uploader(command, key, self.job.clone()).await
     }
 
     /// Returns the current Boot ID.
