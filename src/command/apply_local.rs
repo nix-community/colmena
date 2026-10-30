@@ -96,8 +96,8 @@ pub async fn run(
     }))?;
 
     let target = {
-        if let Some(info) = hive.deployment_info_single(&hostname).await.unwrap() {
-            let nix_flags = hive.nix_flags_with_builders().await.unwrap();
+        if let Some(info) = hive.deployment_info_single(&hostname).await? {
+            let nix_flags = hive.nix_flags_with_builders().await?;
             if !info.allows_local_deployment() {
                 tracing::error!(
                     "Local deployment is not enabled for host {}.",

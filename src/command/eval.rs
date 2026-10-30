@@ -38,14 +38,19 @@ pub async fn run(
 ) -> Result<(), ColmenaError> {
     let expression = expression_file
         .map(|path| {
-            format!(
-                "import {}",
-                path.canonicalize()
-                    .expect("Could not generate absolute path to expression file.")
-                    .to_str()
-                    .unwrap()
-            )
+            path.canonicalize()
+                .and_then(|absolute| {
+                    absolute.into_os_string().into_string().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "path is not valid UTF-8",
+                        )
+                    })
+                })
+                .map(|absolute| format!("import {}", absolute))
+                .map_err(|error| ColmenaError::ExpressionFileError { path, error })
         })
+        .transpose()?
         .or(expression);
 
     let Some(expression) = expression else {
