@@ -109,3 +109,17 @@ with subtest("Check that our Nix store test is actually working"):
 with subtest("Check that we can build nodes with dots in their names"):
     deployer.succeed("cd /tmp/bundle &&" \
         f"{colmena} build --evaluator {evaluator} --eval-node-limit 4 --on gamma.tld")
+
+# eval, instantiate and the repl ignore --evaluator
+if evaluator == "chunked":
+    with subtest("Check that eval, instantiate and the repl work"):
+        deployer.succeed("echo '{ nodes, ... }: builtins.attrNames nodes' > /tmp/names.nix")
+        names = deployer.succeed(f"cd /tmp/bundle && {colmena} eval /tmp/names.nix")
+        assert "alpha" in names
+
+        drv = deployer.succeed("cd /tmp/bundle &&" \
+            f"{colmena} eval --instantiate -E '{{ nodes, ... }}: nodes.alpha.config.system.build.toplevel'")
+        assert drv.strip().endswith(".drv")
+
+        repl = deployer.succeed(f"cd /tmp/bundle && echo 'builtins.attrNames nodes' | {colmena} repl")
+        assert "alpha" in repl
