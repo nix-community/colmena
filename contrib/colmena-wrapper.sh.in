@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2024 Jade Lovelace
+
+doChecks() {
+    # creates refs in the refs/prefetch/remotes/origin namespace
+    echo "Prefetching repo changes..." >&2
+    git fetch --quiet --prefetch --no-write-fetch-head @remote_name@
+
+    diffs=$(git rev-list --left-right --count HEAD...refs/prefetch/remotes/@remote_name@/@upstream_branch@)
+    only_in_local=$(echo "$diffs" | cut -f1)
+    only_in_main=$(echo "$diffs" | cut -f2)
+
+    if [[ $only_in_main -gt 0 && ! -v $FOOTGUN_ME_UWU ]]; then
+        echo >&2
+        echo "Attempting to deploy when @upstream_branch@ has $only_in_main commits not in your branch!" >&2
+        echo "This will probably revert someone's changes. Consider merging them." >&2
+        echo "If you really mean it, set the environment variable FOOTGUN_ME_UWU" >&2
+        exit 1
+    fi
+
+    if [[ $only_in_local -gt 0 ]]; then
+        echo "You have $only_in_local commits not yet pushed to @upstream_branch@. Reminder to push them after :)" >&2
+    fi
+}
+
+if [[ $1 == 'apply' ]]; then
+    doChecks
+fi
+
+exec @colmena@ "$@"
