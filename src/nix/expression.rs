@@ -13,11 +13,6 @@ pub trait NixExpression: Send + Sync {
     fn installable(&self) -> Option<String> {
         None
     }
-
-    /// Returns whether this expression requires the use of flakes.
-    fn requires_flakes(&self) -> bool {
-        false
-    }
 }
 
 /// A serialized Nix expression.

@@ -1,7 +1,6 @@
 {
-  rawHive ? null, # Colmena Hive attrset
-  rawFlake ? null, # Nix Flake attrset with `outputs.colmena`
-  hermetic ? rawFlake != null, # Whether we are allowed to use <nixpkgs>
+  rawHive ? null, # Colmena Hive attrset, optional so that callers can read __schema alone
+  hermetic ? false, # Whether <nixpkgs> is forbidden, which lib.makeHive sets
   colmenaOptions ? import ./options.nix,
   colmenaModules ? import ./modules.nix,
 }:
@@ -19,29 +18,12 @@ let
   };
 
   uncheckedHive =
-    let
-      flakeToHive =
-        rawFlake:
-        if rawFlake.outputs ? colmena then
-          rawFlake.outputs.colmena
-        else
-          throw "Flake must define outputs.colmena.";
-
-      rawToHive =
-        rawHive:
-        if typeOf rawHive == "lambda" || rawHive ? __functor then
-          rawHive { }
-        else if typeOf rawHive == "set" then
-          rawHive
-        else
-          throw "The config must evaluate to an attribute set.";
-    in
-    if rawHive != null then
-      rawToHive rawHive
-    else if rawFlake != null then
-      flakeToHive rawFlake
+    if typeOf rawHive == "lambda" || rawHive ? __functor then
+      rawHive { }
+    else if typeOf rawHive == "set" then
+      rawHive
     else
-      throw "Either a plain Hive attribute set or a Nix Flake attribute set must be specified.";
+      throw "The config must evaluate to an attribute set.";
 
   uncheckedUserMeta =
     if uncheckedHive ? meta && uncheckedHive ? network then
@@ -68,7 +50,7 @@ let
         assert lib.assertMsg (!(uncheckedHive ? __schema)) ''
           You cannot pass in an already-evaluated Hive into the evaluator.
 
-          Hint: Use the `colmenaHive` output instead of `colmena`.
+          Hint: Return the hive attribute set itself. The result of `colmena.lib.makeHive`, such as a flake's `colmenaHive` output, is already evaluated, and Colmena reads a flake directly with `-f ./path/to/flake.nix`.
         '';
         removeAttrs (defaultHive // uncheckedHive) [
           "meta"
@@ -101,8 +83,8 @@ let
 
         {
           # ...
-          outputs = { nixpkgs, ... }: {
-            colmena = {
+          outputs = { nixpkgs, colmena, ... }: {
+            colmenaHive = colmena.lib.makeHive {
               ${configName} = import nixpkgs {
                 system = "x86_64-linux"; # Set your desired system here
                 overlays = [];

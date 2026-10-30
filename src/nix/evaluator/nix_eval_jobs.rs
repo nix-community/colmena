@@ -84,13 +84,10 @@ impl DrvSetEvaluator for NixEvalJobs {
                 .arg("--flake")
                 .arg(installable)
                 .arg("--select")
-                .arg(expression.expression());
+                .arg(expression.expression())
+                .extra_features(&["flakes"]);
         } else {
             command = command.arg("--expr").arg(expression.expression());
-        }
-
-        if expression.requires_flakes() {
-            command = command.extra_features(&["flakes"]);
         }
 
         let mut command = command.build();

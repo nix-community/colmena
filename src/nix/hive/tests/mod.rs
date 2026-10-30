@@ -47,7 +47,7 @@ impl TempHive {
         temp_file.write_all(text.as_bytes()).unwrap();
 
         let hive_path = block_on(HivePath::from_path(temp_file.path(), &flags)).unwrap();
-        let hive = block_on(Hive::new(hive_path, flags)).unwrap();
+        let hive = Hive::new(hive_path, flags).unwrap();
 
         Self {
             hive,
@@ -204,13 +204,13 @@ fn makehive_flake(flake_dir: &Path) -> Hive {
     let mut flags = NixFlags::default();
     flags.set_show_trace(true);
 
-    block_on(Hive::new(HivePath::Flake(flake), flags)).unwrap()
+    Hive::new(HivePath::Flake(flake), flags).unwrap()
 }
 
 #[test]
 fn test_parse_makehive_flake() {
     let flake_dir = makehive_flake_dir();
-    let mut hive = makehive_flake(flake_dir.path());
+    let hive = makehive_flake(flake_dir.path());
 
     let nodes = block_on(hive.deployment_info()).unwrap();
     assert!(set_eq(
@@ -226,17 +226,6 @@ fn test_parse_makehive_flake() {
         let expr = selected.expression();
         assert!(expr.starts_with("with builtins; hive:"));
         assert!(expr.contains("host-a"));
-    }
-
-    // nix-eval-jobs --expr <expr>
-    {
-        hive.set_evaluation_method(EvaluationMethod::NixInstantiate);
-        assert!(
-            hive.eval_selected_expr(&[node!("host-a")])
-                .unwrap()
-                .installable()
-                .is_none()
-        );
     }
 
     drop(flake_dir);

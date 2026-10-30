@@ -9,7 +9,7 @@ use serde::Deserialize;
 use super::{ColmenaError, ColmenaResult, NixCommand, NixFlags};
 
 /// A Nix Flake.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Flake {
     /// The flake metadata.
     metadata: FlakeMetadata,
@@ -19,14 +19,11 @@ pub struct Flake {
 }
 
 /// A `nix flake metadata --json` invocation.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 struct FlakeMetadata {
     /// The resolved URL of the flake.
     #[serde(rename = "resolvedUrl")]
     resolved_url: String,
-
-    /// The locked URL of the flake.
-    url: String,
 }
 
 impl Flake {
@@ -64,14 +61,6 @@ impl Flake {
         &self.metadata.resolved_url
     }
 
-    /// Returns the locked URI.
-    ///
-    /// Note that the URI will not be locked if the git workspace
-    /// is dirty.
-    pub fn locked_uri(&self) -> &str {
-        &self.metadata.url
-    }
-
     /// Returns the local directory, if it exists.
     pub fn local_dir(&self) -> Option<&Path> {
         self.local_dir.as_deref()
@@ -99,21 +88,4 @@ impl FlakeMetadata {
             ColmenaError::BadOutput { output }
         })
     }
-}
-
-/// Quietly locks the dependencies of a flake.
-pub async fn lock_flake_quiet(uri: &str, flags: &NixFlags) -> ColmenaResult<()> {
-    let status = NixCommand::nix(flags.clone())
-        .args(["flake", "lock"])
-        .arg(uri)
-        .build()
-        .stderr(Stdio::null())
-        .status()
-        .await?;
-
-    if !status.success() {
-        return Err(status.into());
-    }
-
-    Ok(())
 }
