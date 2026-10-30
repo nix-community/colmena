@@ -231,7 +231,7 @@ rec {
             description = ''
               Extra SSH options to pass to the SSH command.
             '';
-            type = types.listOf types.str;
+            type = types.listOf (types.coercedTo types.path toString types.str);
             default = [ ];
           };
         };
