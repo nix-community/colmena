@@ -1,6 +1,6 @@
 use std::{
     convert::TryFrom,
-    io::{self, Cursor},
+    io,
     path::{Path, PathBuf},
     process::{ExitStatus, Stdio},
 };
@@ -8,7 +8,7 @@ use std::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
-use tokio::{fs::File, io::AsyncRead, process::Command};
+use tokio::process::Command;
 use validator::{Validate, ValidationError};
 
 #[non_exhaustive]
@@ -104,9 +104,9 @@ pub struct Key {
 }
 
 impl Key {
-    pub async fn reader(&'_ self) -> Result<Box<dyn AsyncRead + Send + Unpin + '_>, KeyError> {
+    pub async fn read(&self) -> Result<Vec<u8>, KeyError> {
         match &self.source {
-            KeySource::Text(content) => Ok(Box::new(Cursor::new(content))),
+            KeySource::Text(content) => Ok(content.clone().into_bytes()),
             KeySource::Command(command) => {
                 let pathname = &command[0];
                 let argv = &command[1..];
@@ -121,7 +121,7 @@ impl Key {
                     .await?;
 
                 if output.status.success() {
-                    Ok(Box::new(Cursor::new(output.stdout)))
+                    Ok(output.stdout)
                 } else {
                     Err(KeyError::KeyCommandStatus {
                         status: output.status,
@@ -132,7 +132,7 @@ impl Key {
                     })
                 }
             }
-            KeySource::File(path) => Ok(Box::new(File::open(path).await?)),
+            KeySource::File(path) => Ok(tokio::fs::read(path).await?),
         }
     }
 

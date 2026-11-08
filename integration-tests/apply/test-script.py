@@ -123,3 +123,10 @@ if evaluator == "chunked":
 
         repl = deployer.succeed(f"cd /tmp/bundle && echo 'builtins.attrNames nodes' | {colmena} repl")
         assert "alpha" in repl
+
+with subtest("Check that a failing key command keeps the existing key"):
+    deployer.succeed("sed -i 's/\"hostname\"/\"false\"/' /tmp/bundle/hive.nix")
+    deployer.fail("cd /tmp/bundle &&" \
+        f"{colmena} upload-keys --evaluator {evaluator} --on alpha")
+
+    alpha.succeed("grep deployer /tmp/another-key-dir/key-command")
