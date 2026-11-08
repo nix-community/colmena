@@ -39,6 +39,9 @@ pub struct Ssh {
     /// extra SSH options
     extra_ssh_options: Vec<String>,
 
+    /// SSH Protocol
+    ssh_proto: String,
+
     /// Whether to use the experimental `nix copy` command.
     use_nix3_copy: bool,
 
@@ -197,6 +200,7 @@ impl Ssh {
             ssh_config: None,
             privilege_escalation_command: Vec::new(),
             extra_ssh_options: Vec::new(),
+            ssh_proto: String::new(),
             use_nix3_copy: false,
             nix_flags,
             job: None,
@@ -213,6 +217,10 @@ impl Ssh {
 
     pub fn set_privilege_escalation_command(&mut self, command: Vec<String>) {
         self.privilege_escalation_command = command;
+    }
+
+    pub fn set_ssh_proto(&mut self, proto: String) {
+        self.ssh_proto = proto;
     }
 
     pub fn set_extra_ssh_options(&mut self, options: Vec<String>) {
@@ -309,7 +317,7 @@ impl Ssh {
                 CopyDirection::FromRemote => command.arg("--from"),
             };
 
-            let mut store_uri = format!("ssh-ng://{}", self.ssh_target());
+            let mut store_uri = format!("{}://{}", self.ssh_proto, self.ssh_target());
             if options.gzip {
                 store_uri += "?compress=true";
             }
