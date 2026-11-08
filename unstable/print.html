@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7c1b7f69.js";
+            window.path_to_searchindex_js = "searchindex-5b3f1d9e.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-443ab3a5.js"></script>
@@ -403,10 +403,6 @@ Your flake needs to depend on Colmena itself as an input and expose a new output
    };
  }
 </code></pre>
-<h2 id="using-legacy-flake-evaluation-deprecated"><a class="header" href="#using-legacy-flake-evaluation-deprecated">Using Legacy Flake Evaluation (Deprecated)</a></h2>
-<p>By default, Colmena uses <code>nix eval</code> to evaluate your flake.
-If you need to use the old evaluation method based on <code>nix-instantiate</code> and <code>builtins.getFlake</code>, add the <code>--legacy-flake-eval</code> flag.
-The legacy flake evaluator uses the <code>colmena</code> output and does not work purely on Nix 2.21+.</p>
 <h2 id="next-steps-1"><a class="header" href="#next-steps-1">Next Steps</a></h2>
 <ul>
 <li>Head to the <a href="#features">Features</a> section to see what else Colmena can do.</li>
@@ -2344,7 +2340,7 @@ what's in the manual.
 
 <span class="ansi1"></span><span class="ansi1 ansi4">Options:</span>
       <span class="ansi1">--sudo</span>
-          Attempt to escalate privileges if not run as root
+          Escalate privileges with deployment.privilegeEscalationCommand if not run as root
 
       <span class="ansi1">--show-trace</span>
           Show debug information for Nix commands
