@@ -118,12 +118,6 @@ Your flake needs to depend on Colmena itself as an input and expose a new output
  }
 ```
 
-## Using Legacy Flake Evaluation (Deprecated)
-
-By default, Colmena uses `nix eval` to evaluate your flake.
-If you need to use the old evaluation method based on `nix-instantiate` and `builtins.getFlake`, add the `--legacy-flake-eval` flag.
-The legacy flake evaluator uses the `colmena` output and does not work purely on Nix 2.21+.
-
 ## Next Steps
 
 - Head to the [Features](../features/index.md) section to see what else Colmena can do.
