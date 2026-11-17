@@ -21,7 +21,7 @@ pub struct NodeFilterOpts {
     /// - edge-*
     /// - edge-*,core-*
     /// - @a-tag,@tags-can-have-*
-    #[arg(long, value_name = "NODES")]
+    #[arg(long, value_name = "NODES", value_hint = clap::ValueHint::Other)]
     pub on: Option<NodeFilter>,
 }
 

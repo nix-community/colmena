@@ -337,7 +337,78 @@ fn print_completions(shell: Shell, cmd: &mut clap::Command) {
         .expect("Must have a bin_name")
         .to_string();
 
-    clap_complete::generate(shell, cmd, bin_name, &mut std::io::stdout());
+    clap_complete::generate(shell, cmd, bin_name.clone(), &mut std::io::stdout());
+
+    if shell == Shell::Fish {
+        print!("{}", fish_completions(cmd, &bin_name));
+    }
+}
+
+/// Fish completions that clap_complete does not generate.
+///
+/// Its fish generator does not complete positional arguments, so this adds
+/// their possible values, such as the goals of `apply`. It also completes
+/// `--on` with the names of the hive's nodes, evaluated when completing.
+fn fish_completions(cmd: &clap::Command, bin_name: &str) -> String {
+    use std::fmt::Write;
+
+    let escape = |s: &str| s.replace('\\', "\\\\").replace('\'', "\\'");
+    // As clap_complete names its helper functions.
+    let fn_name = bin_name.replace('-', "_");
+    let mut out = String::new();
+    let mut with_on = Vec::new();
+
+    for sub in cmd.get_subcommands().filter(|sub| !sub.is_hide_set()) {
+        let condition = format!("__fish_{fn_name}_using_subcommand {}", sub.get_name());
+
+        for arg in sub.get_positionals() {
+            for value in arg.get_possible_values() {
+                if value.is_hide_set() {
+                    continue;
+                }
+                let help = value.get_help().map(|h| h.to_string()).unwrap_or_default();
+                writeln!(
+                    out,
+                    "complete -c {bin_name} -n \"{condition}\" -f -a '{}' -d '{}'",
+                    escape(value.get_name()),
+                    escape(&help),
+                )
+                .unwrap();
+            }
+        }
+
+        if sub.get_arguments().any(|arg| arg.get_long() == Some("on")) {
+            with_on.push(condition);
+        }
+    }
+
+    if !with_on.is_empty() {
+        writeln!(
+            out,
+            r#"
+function __fish_{fn_name}_nodes --description 'Print the names of the nodes in the hive'
+    set -l args
+    set -l config_next 0
+    for token in (commandline -opc)[2..]
+        if test $config_next = 1
+            set -a args --config $token
+            set config_next 0
+        else if contains -- $token -f --config
+            set config_next 1
+        else if string match -q -- '--config=*' $token
+            set -a args $token
+        end
+    end
+    command {bin_name} $args eval -E '{{ nodes, ... }}: builtins.attrNames nodes' 2>/dev/null | string match -rag '"([^"]+)"'
+end
+
+complete -c {bin_name} -n "{}" -l on -x -a "(__fish_append , (__fish_{fn_name}_nodes))""#,
+            with_on.join("; or "),
+        )
+        .unwrap();
+    }
+
+    out
 }
 
 fn set_color_pref(when: &ColorWhen) {
@@ -360,4 +431,35 @@ fn init_logging() {
         .without_time()
         .with_ansi(colors_enabled)
         .init();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fish_completions() {
+        let mut cmd = Opts::command();
+        cmd.build();
+        let fish = fish_completions(&cmd, "colmena");
+
+        // Goals, which the generated fish completions lack as a positional argument
+        assert!(fish.contains(
+            "complete -c colmena -n \"__fish_colmena_using_subcommand apply\" -f -a 'dry-activate'"
+        ));
+
+        // Node names for --on, for each subcommand that takes it
+        assert!(fish.contains("function __fish_colmena_nodes"));
+        let on = fish
+            .lines()
+            .find(|line| line.contains(" -l on "))
+            .expect("--on is completed");
+        for sub in ["apply", "build", "exec", "upload-keys"] {
+            assert!(on.contains(&format!("__fish_colmena_using_subcommand {sub}")));
+        }
+        assert!(on.ends_with("-x -a \"(__fish_append , (__fish_colmena_nodes))\""));
+
+        // Nothing for hidden subcommands
+        assert!(!fish.contains("gen-completions"));
+    }
 }
